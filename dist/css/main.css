@@ -1,0 +1,29 @@
+body { border: 0; margin: 0; }
+
+line { z-index: 3; }
+
+circle[class^="marker-"] { z-index: 100; cursor: pointer; }
+
+circle[class^="marker-"].active { fill: red; }
+
+.slider-view { margin: 0 auto; position: relative; opacity: 0; overflow: hidden; width: 100%; height: 216px; }
+
+.slider-card { float: left; display: block; max-width: 480px; text-align: center; height: 200px; }
+
+@media (max-width: 20em) { .slider-card { width: 980px; max-width: none; } }
+
+.slider-cards { position: relative; margin: 0; padding: 0; height: 200px; }
+
+.slider-content { border: 1px solid black; border-radius: 7px; padding: 0.75em; }
+
+.slider-content p { text-align: left; }
+
+.nav { width: 100%; height: 16px; display: block; position: absolute; text-align: center; }
+
+.nav ol { margin: 0; padding: 0; }
+
+.nav li { top: -5px; width: 11px; height: 11px; margin: 0 4px; position: relative; border-radius: 100%; display: inline-block; background-color: rgba(0, 0, 0, 0.6); }
+
+.nav li:hover { cursor: pointer; }
+
+.nav .active { background-color: red; }
