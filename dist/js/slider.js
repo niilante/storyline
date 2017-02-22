@@ -46,12 +46,12 @@ var slider =
 /***/ 0:
 /***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __webpack_require__(37);
+	module.exports = __webpack_require__(35);
 
 
 /***/ },
 
-/***/ 37:
+/***/ 35:
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -63,6 +63,11 @@ var slider =
 	};
 
 	Slider.prototype = {
+	  /**
+	   * creates the slider view and appends slides to it
+	   *
+	   * @returns {HTMLElement} complete slider
+	   */
 	  createSlider: function createSlider() {
 	    var sliderView = document.createElement("div");
 	    sliderView.setAttribute('class', 'slider-view');
@@ -80,7 +85,7 @@ var slider =
 	    return sliderView;
 	  },
 	  evalTemplate: function evalTemplate(templateId, context) {
-	    var mustache = __webpack_require__(38),
+	    var mustache = __webpack_require__(36),
 	        templateContent = document.getElementById(templateId).innerHTML,
 	        rendered = mustache.render(templateContent, context);
 
@@ -132,10 +137,15 @@ var slider =
 	    var slide = this.cards.children[index],
 	        margin = slide.offsetWidth - slide.clientWidth;
 
-	    this.cards.style.marginLeft = -1 * (slide.offsetLeft - margin) + "px";
+	    this.cards.style.marginLeft = -1 * (slide.offsetLeft - margin - 20) + "px";
 	    this.setActiveSlide(index, pastIndex);
-	    return this.cards.style.marginLeft;
 	  },
+	  /**
+	   * sets the width of the document
+	   *
+	   * @param w
+	   * @returns {undefined}
+	   */
 	  setWidth: function setWidth(w) {
 	    var MARGIN = 10,
 	        numSlides = this.slides.length;
@@ -157,7 +167,7 @@ var slider =
 
 /***/ },
 
-/***/ 38:
+/***/ 36:
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!

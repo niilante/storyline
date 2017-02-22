@@ -1,10 +1,11 @@
 {
-  "data": "./assets/averageWeather2016.csv",
-  "xAxis": "DOY",
-  "yAxis": "AT",
-  "xLabel": "Day of Year",
-  "yLabel": "Average Temp",
-  "xTickInterval": 30,
+  "filename": "./assets/dates_unemployment_copy.csv",
+  "dateFormat": "MM/DD/YY",
+  "xAxis": "Date",
+  "xLabel": "Year",
+  "yAxis": "US unemployment rate",
+  "yLabel": "US unemployment rate",
+  "xTickInterval": 10,
   "yTickInterval": null,
   "startIndex": 2,
   "slides": [
@@ -35,7 +36,7 @@
     {
       "title": "4: Example Title Five",
       "text": "The pentagon has calculated that the equipment received in 2006 cost around $5million. Federal initiatives to provide funding and equipment to police have come under tremendous scrutiny surronding the issue of transparency",
-      "rowNum": 55,
+      "rowNum": 200,
       "isActive": false
     }
   ]
