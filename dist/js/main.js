@@ -49,64 +49,104 @@ var main =
 
 	var _storyline = __webpack_require__(1);
 
+	var _lib = __webpack_require__(160);
+
+	var throttle = __webpack_require__(161);
+
 	window.Storyline = _storyline.Storyline;
+
+	var throttled = throttle(_lib.lib.onResize, 250, { 'trailing': false });
+
+	window.onresize = throttled;
 
 /***/ },
 /* 1 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';
+	/* WEBPACK VAR INJECTION */(function(PubSub) {'use strict';
 
-	var _chart = __webpack_require__(2);
+	var _chart = __webpack_require__(3);
 
-	var _data = __webpack_require__(3);
+	var _data = __webpack_require__(14);
 
-	var _slider = __webpack_require__(35);
+	var _slider = __webpack_require__(157);
 
-	var Storyline = function Storyline(targetId, config) {
-	  var self = this;
-	  this.container = document.getElementById(targetId);
-	  this.height = this.container.getAttribute('height');
-	  this.container.style.height = this.height + "px";
-	  this.width = this.container.getAttribute('width');
-	  this.container.style.width = this.width + "px";
-	  this.slider = new _slider.Slider(config.slides, config.startIndex);
-	  var slider = this.slider;
-
-	  var data = new _data.DataFactoryFunc();
-
-	  data.fetchData(config).then(function (dataObj) {
-	    storyline.chart = new _chart.Chart(dataObj, storyline.width, storyline.height, storyline.margin);
-	    var chart = storyline.chart;
-
-	    self.appendChart(chart);
-	    self.appendSlider(slider);
-	    slider.moveSlide();
-	    slider.attachClickHandler(chart.markers);
-	  });
+	var Storyline = function Storyline(targetId, dataConfig) {
+	  this.elem = document.getElementById(targetId);
+	  this.dataConfig = dataConfig;
+	  this.init();
 	};
+
 	Storyline.prototype = {
+	  init: function init() {
+	    var self = this;
+	    this.setDimensions();
+	    this.slider = this.initSlider();
+	    this.grabData(this.dataConfig).then(function (dataObj) {
+	      self.data = dataObj;
+	      self.chart = self.initChart(dataObj);
+	      self.positionChart(self.chart);
+	      self.positionSlider(self.slider);
+	    });
+	    PubSub.subscribe('window resized', function (topic, data) {
+	      self.resetWidth(data);
+	    });
+	  },
+	  resetWidth: function resetWidth(newWidth) {
+	    this.width = newWidth;
+	    var oldSlider = this.slider.elem;
+	    var oldChart = this.chart.canvas;
+	    oldSlider.remove();
+	    oldChart.remove();
+	    this.slider = this.initSlider();
+	    this.chart = this.initChart(this.data);
+	    this.positionChart(this.chart);
+	    this.positionSlider(this.slider);
+	  },
+	  grabData: function grabData() {
+	    var data = new _data.DataFactory();
+	    return data.fetchData(this.dataConfig);
+	  },
+	  initSlider: function initSlider() {
+	    var sliderHeight = 0.4 * this.height;
+	    return new _slider.Slider(this.dataConfig.slides, this.dataConfig.startIndex, sliderHeight);
+	  },
+	  initChart: function initChart(dataObj) {
+	    //chart height//
+	    var chartHeight = 0.6 * this.height;
+	    return new _chart.Chart(dataObj, this.width, chartHeight, this.margin);
+	  },
+	  /**
+	   * checks browser size and if mobile, overrides input dimensions
+	   *
+	   * @returns {undefined}
+	   */
+	  setDimensions: function setDimensions(width) {
+	    this.height = this.elem.getAttribute('height');
+	    //this.elem.style.height = this.height + "px";
+	    this.width = width ? width : window.innerWidth;
+	    //this.elem.style.width = this.width + "px";
+	  },
 	  attr: function attr(dimension, value) {
 	    if (dimension == "height") {
 	      this.height = value;
-	      this.container.style.height = value + "px";
+	      this.elem.style.height = value + "px";
 	    } else if (dimension == "width") {
 	      this.width = value;
-	      this.container.style.width = value + "px";
+	      this.elem.style.width = value + "px";
 	    } else if (dimension == "margin") {
 	      this.margin = value;
 	    }
 	  },
-	  buildSlides: function buildSlides(config, targetId) {
-	    config;
-	  },
-	  appendChart: function appendChart(chart) {
-	    this.container.appendChild(chart.canvas);
+	  positionChart: function positionChart(chart) {
+	    this.elem.appendChild(chart.canvas);
 	    //chart.setWidth(this.width)
 	  },
-	  appendSlider: function appendSlider(slider) {
-	    this.container.appendChild(slider.elem);
+	  positionSlider: function positionSlider(slider) {
+	    this.elem.appendChild(slider.elem);
 	    slider.setWidth(this.width);
+	    slider.setTrayPosition();
+	    slider.attachClickHandler(this.chart.markers);
 	    slider.elem.style.opacity = 1;
 	  }
 	};
@@ -114,12 +154,270 @@ var main =
 	module.exports = {
 	  Storyline: Storyline
 	};
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2)))
 
 /***/ },
 /* 2 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*
+	Copyright (c) 2010,2011,2012,2013,2014 Morgan Roderick http://roderick.dk
+	License: MIT - http://mrgnrdrck.mit-license.org
+
+	https://github.com/mroderick/PubSubJS
+	*/
+	(function (root, factory){
+		'use strict';
+
+	    if (true){
+	        // AMD. Register as an anonymous module.
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [exports], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+
+	    } else if (typeof exports === 'object'){
+	        // CommonJS
+	        factory(exports);
+
+	    }
+
+	    // Browser globals
+	    var PubSub = {};
+	    root.PubSub = PubSub;
+	    factory(PubSub);
+
+	}(( typeof window === 'object' && window ) || this, function (PubSub){
+		'use strict';
+
+		var messages = {},
+			lastUid = -1;
+
+		function hasKeys(obj){
+			var key;
+
+			for (key in obj){
+				if ( obj.hasOwnProperty(key) ){
+					return true;
+				}
+			}
+			return false;
+		}
+
+		/**
+		 *	Returns a function that throws the passed exception, for use as argument for setTimeout
+		 *	@param { Object } ex An Error object
+		 */
+		function throwException( ex ){
+			return function reThrowException(){
+				throw ex;
+			};
+		}
+
+		function callSubscriberWithDelayedExceptions( subscriber, message, data ){
+			try {
+				subscriber( message, data );
+			} catch( ex ){
+				setTimeout( throwException( ex ), 0);
+			}
+		}
+
+		function callSubscriberWithImmediateExceptions( subscriber, message, data ){
+			subscriber( message, data );
+		}
+
+		function deliverMessage( originalMessage, matchedMessage, data, immediateExceptions ){
+			var subscribers = messages[matchedMessage],
+				callSubscriber = immediateExceptions ? callSubscriberWithImmediateExceptions : callSubscriberWithDelayedExceptions,
+				s;
+
+			if ( !messages.hasOwnProperty( matchedMessage ) ) {
+				return;
+			}
+
+			for (s in subscribers){
+				if ( subscribers.hasOwnProperty(s)){
+					callSubscriber( subscribers[s], originalMessage, data );
+				}
+			}
+		}
+
+		function createDeliveryFunction( message, data, immediateExceptions ){
+			return function deliverNamespaced(){
+				var topic = String( message ),
+					position = topic.lastIndexOf( '.' );
+
+				// deliver the message as it is now
+				deliverMessage(message, message, data, immediateExceptions);
+
+				// trim the hierarchy and deliver message to each level
+				while( position !== -1 ){
+					topic = topic.substr( 0, position );
+					position = topic.lastIndexOf('.');
+					deliverMessage( message, topic, data, immediateExceptions );
+				}
+			};
+		}
+
+		function messageHasSubscribers( message ){
+			var topic = String( message ),
+				found = Boolean(messages.hasOwnProperty( topic ) && hasKeys(messages[topic])),
+				position = topic.lastIndexOf( '.' );
+
+			while ( !found && position !== -1 ){
+				topic = topic.substr( 0, position );
+				position = topic.lastIndexOf( '.' );
+				found = Boolean(messages.hasOwnProperty( topic ) && hasKeys(messages[topic]));
+			}
+
+			return found;
+		}
+
+		function publish( message, data, sync, immediateExceptions ){
+			var deliver = createDeliveryFunction( message, data, immediateExceptions ),
+				hasSubscribers = messageHasSubscribers( message );
+
+			if ( !hasSubscribers ){
+				return false;
+			}
+
+			if ( sync === true ){
+				deliver();
+			} else {
+				setTimeout( deliver, 0 );
+			}
+			return true;
+		}
+
+		/**
+		 *	PubSub.publish( message[, data] ) -> Boolean
+		 *	- message (String): The message to publish
+		 *	- data: The data to pass to subscribers
+		 *	Publishes the the message, passing the data to it's subscribers
+		**/
+		PubSub.publish = function( message, data ){
+			return publish( message, data, false, PubSub.immediateExceptions );
+		};
+
+		/**
+		 *	PubSub.publishSync( message[, data] ) -> Boolean
+		 *	- message (String): The message to publish
+		 *	- data: The data to pass to subscribers
+		 *	Publishes the the message synchronously, passing the data to it's subscribers
+		**/
+		PubSub.publishSync = function( message, data ){
+			return publish( message, data, true, PubSub.immediateExceptions );
+		};
+
+		/**
+		 *	PubSub.subscribe( message, func ) -> String
+		 *	- message (String): The message to subscribe to
+		 *	- func (Function): The function to call when a new message is published
+		 *	Subscribes the passed function to the passed message. Every returned token is unique and should be stored if
+		 *	you need to unsubscribe
+		**/
+		PubSub.subscribe = function( message, func ){
+			if ( typeof func !== 'function'){
+				return false;
+			}
+
+			// message is not registered yet
+			if ( !messages.hasOwnProperty( message ) ){
+				messages[message] = {};
+			}
+
+			// forcing token as String, to allow for future expansions without breaking usage
+			// and allow for easy use as key names for the 'messages' object
+			var token = 'uid_' + String(++lastUid);
+			messages[message][token] = func;
+
+			// return token for unsubscribing
+			return token;
+		};
+
+		/* Public: Clears all subscriptions
+		 */
+		PubSub.clearAllSubscriptions = function clearAllSubscriptions(){
+			messages = {};
+		};
+
+		/*Public: Clear subscriptions by the topic
+		*/
+		PubSub.clearSubscriptions = function clearSubscriptions(topic){
+			var m;
+			for (m in messages){
+				if (messages.hasOwnProperty(m) && m.indexOf(topic) === 0){
+					delete messages[m];
+				}
+			}
+		};
+
+		/* Public: removes subscriptions.
+		 * When passed a token, removes a specific subscription.
+		 * When passed a function, removes all subscriptions for that function
+		 * When passed a topic, removes all subscriptions for that topic (hierarchy)
+		 *
+		 * value - A token, function or topic to unsubscribe.
+		 *
+		 * Examples
+		 *
+		 *		// Example 1 - unsubscribing with a token
+		 *		var token = PubSub.subscribe('mytopic', myFunc);
+		 *		PubSub.unsubscribe(token);
+		 *
+		 *		// Example 2 - unsubscribing with a function
+		 *		PubSub.unsubscribe(myFunc);
+		 *
+		 *		// Example 3 - unsubscribing a topic
+		 *		PubSub.unsubscribe('mytopic');
+		 */
+		PubSub.unsubscribe = function(value){
+			var isTopic    = typeof value === 'string' && messages.hasOwnProperty(value),
+				isToken    = !isTopic && typeof value === 'string',
+				isFunction = typeof value === 'function',
+				result = false,
+				m, message, t;
+
+			if (isTopic){
+				PubSub.clearSubscriptions(value);
+				return;
+			}
+
+			for ( m in messages ){
+				if ( messages.hasOwnProperty( m ) ){
+					message = messages[m];
+
+					if ( isToken && message[value] ){
+						delete message[value];
+						result = value;
+						// tokens are unique, so we can just stop here
+						break;
+					}
+
+					if (isFunction) {
+						for ( t in message ){
+							if (message.hasOwnProperty(t) && message[t] === value){
+								delete message[t];
+								result = true;
+							}
+						}
+					}
+				}
+			}
+
+			return result;
+		};
+	}));
+
+
+/***/ },
+/* 3 */
+/***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
+
+	var d3 = {};
+	d3.axis = __webpack_require__(4);
+	d3.scale = __webpack_require__(5);
+	d3.selection = __webpack_require__(13);
+	d3.time = __webpack_require__(12);
 
 	var Chart = function Chart(dataObj, width, height, margin) {
 	  var AXIS_HEIGHT = 25;
@@ -130,16 +428,49 @@ var main =
 	  this.margin = margin || { 'top': 10, 'right': 50, 'bottom': 30, 'left': 20 };
 	  this.width = width - this.margin.right - this.margin.left;
 	  this.height = height - this.margin.top - this.margin.bottom - AXIS_HEIGHT;
-	  this.init();
+	  this.createChart();
 	};
 
 	Chart.prototype = {
-	  init: function init() {
+	  createChart: function createChart() {
 	    this.setRange();
 	    this.setScale();
 	    this.setTranslation();
 	    this.createCanvas();
 	    this.drawLine();
+	    this.drawMarkers();
+	    this.drawAxes(d3);
+	  },
+	  drawAxes: function drawAxes(d3) {
+	    var self = this;
+
+	    var x = d3.scale.scaleTime().domain([this.bounds.minX.toDate(), this.bounds.maxX.toDate()]).range([0, this.width]);
+	    var xAxis = d3.axis.axisBottom(x).tickSize(this.height).tickFormat(d3.time.timeFormat(this.axes.timeFormat));
+
+	    var y = d3.scale.scaleLinear().domain([this.bounds.minY, this.bounds.maxY]).range([this.height, 0]);
+	    var yAxis = d3.axis.axisRight(y).tickSize(this.width).tickFormat(function (d) {
+	      if (d > 1e6) {
+	        d = d / 1e6;
+	      }
+	      return this.parentNode.nextSibling ? "\xa0" + d : d;
+	    });
+
+	    function customXAxis(g) {
+	      g.call(xAxis);
+	      g.select(".domain").remove();
+	      g.selectAll(".tick line").attr("stroke", "rgb(211, 211, 211)");
+	    }
+
+	    function customYAxis(g) {
+	      g.call(yAxis);
+	      g.select(".domain").remove();
+	      g.selectAll(".tick line").attr("stroke", "rgb(211, 211, 211)");
+	      g.selectAll(".tick text").attr("dy", -4).attr("text-anchor", "end");
+	    }
+
+	    d3.selection.select(this.elem).append("g").attr("transform", "translate(0,0)").call(customXAxis);
+
+	    d3.selection.select(this.elem).append("g").call(customYAxis).append("text").attr("fill", "rgb(184, 184, 184)").attr("x", this.width).attr("y", 6).attr("dy", "1.75em").attr("text-anchor", "end").text(this.axes.yLabel);
 	  },
 	  /**
 	   * sets the range of the chart
@@ -243,7 +574,7 @@ var main =
 	   * @param translate
 	   * @returns {HTMLElement} <g>
 	   */
-	  createSingleTick: function createSingleTick(tickDist, translate) {
+	  createTick: function createTick(tickDist, translate) {
 	    var tick = document.createElementNS('http://www.w3.org/2000/svg', 'g');
 
 	    tick.setAttribute("transform", 'translate(' + tickDist + ', ' + translate + ')');
@@ -258,7 +589,7 @@ var main =
 	   * @param {num} y2
 	   * @returns {HTMLElement} <line>
 	   */
-	  createTickStroke: function createTickStroke(x1, x2, y1, y2) {
+	  drawTick: function drawTick(x1, x2, y1, y2) {
 	    var tickStroke = document.createElementNS('http://www.w3.org/2000/svg', 'line'),
 	        coords = {
 	      'x1': x1,
@@ -284,7 +615,7 @@ var main =
 	   * @param {string} label
 	   * @returns {HTMLElement} <text>
 	   */
-	  createTickLabel: function createTickLabel(x, y, dy, label) {
+	  labelTick: function labelTick(x, y, dy, label) {
 	    var tickLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
 
 	    tickLabel.setAttribute("fill", "#000");
@@ -319,15 +650,15 @@ var main =
 	      if (axis === 'x') {
 	        var distBetweenTicks = this.width / ticks.numTicks * i;
 
-	        tick = this.createSingleTick(distBetweenTicks, this.height);
-	        tickStroke = this.createTickStroke(0, 0, null, 6);
-	        tickLabel = this.createTickLabel(-16, 9, 0.71, ticks.tickLabels[i]);
+	        tick = this.createTick(distBetweenTicks, this.height);
+	        tickStroke = this.drawTick(0, 0, null, 6);
+	        tickLabel = this.labelTick(-16, 9, 0.71, ticks.tickLabels[i]);
 	        path.setAttribute('d', 'M0,' + this.height + 'h' + this.width);
 	      } else {
 	        var distBetweenTicks = this.height / (ticks.tickLabels.length - 1) * i,
-	            tick = this.createSingleTick(0, this.height - distBetweenTicks);
-	        tickStroke = this.createTickStroke(null, -6, 0.5, 0.5);
-	        tickLabel = this.createTickLabel(-10, 0.5, 0.31, ticks.tickLabels[i]);
+	            tick = this.createTick(0, this.height - distBetweenTicks);
+	        tickStroke = this.drawTick(null, -6, 0.5, 0.5);
+	        tickLabel = this.labelTick(-10, 0.5, 0.31, ticks.tickLabels[i]);
 	        tickLabel.setAttribute('text-anchor', 'end');
 	        path.setAttribute('d', 'M0,' + 0 + 'v' + this.height);
 	      }
@@ -348,8 +679,9 @@ var main =
 	   * @param {num} counter to keep track of order of points
 	   * @returns {HTMLElement} <circle>
 	   */
-	  createMarkers: function createMarkers(markersArray) {
-	    var self = this;
+	  drawMarkers: function drawMarkers() {
+	    var self = this,
+	        markersArray = this.aggregateMarkers();
 
 	    self.markers = [];
 	    markersArray.map(function (marker) {
@@ -419,17 +751,15 @@ var main =
 	  drawLine: function drawLine() {
 	    var lineEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
-	    this.createMarkers(this.aggregateMarkers());
-
 	    lineEl.setAttribute('d', this.aggregatePoints());
 	    lineEl.setAttribute('stroke', 'grey');
 	    lineEl.setAttribute('fill', 'none');
 	    this.elem.appendChild(lineEl);
 
-	    var xAxis = this.createAxis(this.makeAxisValues('x'), 'x');
-	    var yAxis = this.createAxis(this.makeAxisValues('y'), 'y');
-	    this.elem.appendChild(xAxis);
-	    this.elem.appendChild(yAxis);
+	    //var xAxis = this.createAxis(this.makeAxisValues('x'), 'x');
+	    ///var yAxis = this.createAxis(this.makeAxisValues('y'), 'y');
+	    //this.elem.appendChild(xAxis);
+	    //this.elem.appendChild(yAxis);
 	  },
 	  /**
 	   * create an empty svg object "canvas" where line graph will be drawn
@@ -454,16 +784,5199 @@ var main =
 	};
 
 /***/ },
-/* 3 */
+/* 4 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// https://d3js.org/d3-axis/ Version 1.0.5. Copyright 2017 Mike Bostock.
+	(function (global, factory) {
+		 true ? factory(exports) :
+		typeof define === 'function' && define.amd ? define(['exports'], factory) :
+		(factory((global.d3 = global.d3 || {})));
+	}(this, (function (exports) { 'use strict';
+
+	var slice = Array.prototype.slice;
+
+	var identity = function(x) {
+	  return x;
+	};
+
+	var top = 1;
+	var right = 2;
+	var bottom = 3;
+	var left = 4;
+	var epsilon = 1e-6;
+
+	function translateX(x) {
+	  return "translate(" + x + ",0)";
+	}
+
+	function translateY(y) {
+	  return "translate(0," + y + ")";
+	}
+
+	function center(scale) {
+	  var offset = scale.bandwidth() / 2;
+	  if (scale.round()) offset = Math.round(offset);
+	  return function(d) {
+	    return scale(d) + offset;
+	  };
+	}
+
+	function entering() {
+	  return !this.__axis;
+	}
+
+	function axis(orient, scale) {
+	  var tickArguments = [],
+	      tickValues = null,
+	      tickFormat = null,
+	      tickSizeInner = 6,
+	      tickSizeOuter = 6,
+	      tickPadding = 3,
+	      k = orient === top || orient === left ? -1 : 1,
+	      x, y = orient === left || orient === right ? (x = "x", "y") : (x = "y", "x"),
+	      transform = orient === top || orient === bottom ? translateX : translateY;
+
+	  function axis(context) {
+	    var values = tickValues == null ? (scale.ticks ? scale.ticks.apply(scale, tickArguments) : scale.domain()) : tickValues,
+	        format = tickFormat == null ? (scale.tickFormat ? scale.tickFormat.apply(scale, tickArguments) : identity) : tickFormat,
+	        spacing = Math.max(tickSizeInner, 0) + tickPadding,
+	        range = scale.range(),
+	        range0 = range[0] + 0.5,
+	        range1 = range[range.length - 1] + 0.5,
+	        position = (scale.bandwidth ? center : identity)(scale.copy()),
+	        selection = context.selection ? context.selection() : context,
+	        path = selection.selectAll(".domain").data([null]),
+	        tick = selection.selectAll(".tick").data(values, scale).order(),
+	        tickExit = tick.exit(),
+	        tickEnter = tick.enter().append("g").attr("class", "tick"),
+	        line = tick.select("line"),
+	        text = tick.select("text");
+
+	    path = path.merge(path.enter().insert("path", ".tick")
+	        .attr("class", "domain")
+	        .attr("stroke", "#000"));
+
+	    tick = tick.merge(tickEnter);
+
+	    line = line.merge(tickEnter.append("line")
+	        .attr("stroke", "#000")
+	        .attr(x + "2", k * tickSizeInner)
+	        .attr(y + "1", 0.5)
+	        .attr(y + "2", 0.5));
+
+	    text = text.merge(tickEnter.append("text")
+	        .attr("fill", "#000")
+	        .attr(x, k * spacing)
+	        .attr(y, 0.5)
+	        .attr("dy", orient === top ? "0em" : orient === bottom ? "0.71em" : "0.32em"));
+
+	    if (context !== selection) {
+	      path = path.transition(context);
+	      tick = tick.transition(context);
+	      line = line.transition(context);
+	      text = text.transition(context);
+
+	      tickExit = tickExit.transition(context)
+	          .attr("opacity", epsilon)
+	          .attr("transform", function(d) { return isFinite(d = position(d)) ? transform(d) : this.getAttribute("transform"); });
+
+	      tickEnter
+	          .attr("opacity", epsilon)
+	          .attr("transform", function(d) { var p = this.parentNode.__axis; return transform(p && isFinite(p = p(d)) ? p : position(d)); });
+	    }
+
+	    tickExit.remove();
+
+	    path
+	        .attr("d", orient === left || orient == right
+	            ? "M" + k * tickSizeOuter + "," + range0 + "H0.5V" + range1 + "H" + k * tickSizeOuter
+	            : "M" + range0 + "," + k * tickSizeOuter + "V0.5H" + range1 + "V" + k * tickSizeOuter);
+
+	    tick
+	        .attr("opacity", 1)
+	        .attr("transform", function(d) { return transform(position(d)); });
+
+	    line
+	        .attr(x + "2", k * tickSizeInner);
+
+	    text
+	        .attr(x, k * spacing)
+	        .text(format);
+
+	    selection.filter(entering)
+	        .attr("fill", "none")
+	        .attr("font-size", 10)
+	        .attr("font-family", "sans-serif")
+	        .attr("text-anchor", orient === right ? "start" : orient === left ? "end" : "middle");
+
+	    selection
+	        .each(function() { this.__axis = position; });
+	  }
+
+	  axis.scale = function(_) {
+	    return arguments.length ? (scale = _, axis) : scale;
+	  };
+
+	  axis.ticks = function() {
+	    return tickArguments = slice.call(arguments), axis;
+	  };
+
+	  axis.tickArguments = function(_) {
+	    return arguments.length ? (tickArguments = _ == null ? [] : slice.call(_), axis) : tickArguments.slice();
+	  };
+
+	  axis.tickValues = function(_) {
+	    return arguments.length ? (tickValues = _ == null ? null : slice.call(_), axis) : tickValues && tickValues.slice();
+	  };
+
+	  axis.tickFormat = function(_) {
+	    return arguments.length ? (tickFormat = _, axis) : tickFormat;
+	  };
+
+	  axis.tickSize = function(_) {
+	    return arguments.length ? (tickSizeInner = tickSizeOuter = +_, axis) : tickSizeInner;
+	  };
+
+	  axis.tickSizeInner = function(_) {
+	    return arguments.length ? (tickSizeInner = +_, axis) : tickSizeInner;
+	  };
+
+	  axis.tickSizeOuter = function(_) {
+	    return arguments.length ? (tickSizeOuter = +_, axis) : tickSizeOuter;
+	  };
+
+	  axis.tickPadding = function(_) {
+	    return arguments.length ? (tickPadding = +_, axis) : tickPadding;
+	  };
+
+	  return axis;
+	}
+
+	function axisTop(scale) {
+	  return axis(top, scale);
+	}
+
+	function axisRight(scale) {
+	  return axis(right, scale);
+	}
+
+	function axisBottom(scale) {
+	  return axis(bottom, scale);
+	}
+
+	function axisLeft(scale) {
+	  return axis(left, scale);
+	}
+
+	exports.axisTop = axisTop;
+	exports.axisRight = axisRight;
+	exports.axisBottom = axisBottom;
+	exports.axisLeft = axisLeft;
+
+	Object.defineProperty(exports, '__esModule', { value: true });
+
+	})));
+
+
+/***/ },
+/* 5 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// https://d3js.org/d3-scale/ Version 1.0.4. Copyright 2016 Mike Bostock.
+	(function (global, factory) {
+	   true ? factory(exports, __webpack_require__(6), __webpack_require__(7), __webpack_require__(8), __webpack_require__(10), __webpack_require__(11), __webpack_require__(12), __webpack_require__(9)) :
+	  typeof define === 'function' && define.amd ? define(['exports', 'd3-array', 'd3-collection', 'd3-interpolate', 'd3-format', 'd3-time', 'd3-time-format', 'd3-color'], factory) :
+	  (factory((global.d3 = global.d3 || {}),global.d3,global.d3,global.d3,global.d3,global.d3,global.d3,global.d3));
+	}(this, (function (exports,d3Array,d3Collection,d3Interpolate,d3Format,d3Time,d3TimeFormat,d3Color) { 'use strict';
+
+	var array = Array.prototype;
+
+	var map$1 = array.map;
+	var slice = array.slice;
+
+	var implicit = {name: "implicit"};
+
+	function ordinal(range$$1) {
+	  var index = d3Collection.map(),
+	      domain = [],
+	      unknown = implicit;
+
+	  range$$1 = range$$1 == null ? [] : slice.call(range$$1);
+
+	  function scale(d) {
+	    var key = d + "", i = index.get(key);
+	    if (!i) {
+	      if (unknown !== implicit) return unknown;
+	      index.set(key, i = domain.push(d));
+	    }
+	    return range$$1[(i - 1) % range$$1.length];
+	  }
+
+	  scale.domain = function(_) {
+	    if (!arguments.length) return domain.slice();
+	    domain = [], index = d3Collection.map();
+	    var i = -1, n = _.length, d, key;
+	    while (++i < n) if (!index.has(key = (d = _[i]) + "")) index.set(key, domain.push(d));
+	    return scale;
+	  };
+
+	  scale.range = function(_) {
+	    return arguments.length ? (range$$1 = slice.call(_), scale) : range$$1.slice();
+	  };
+
+	  scale.unknown = function(_) {
+	    return arguments.length ? (unknown = _, scale) : unknown;
+	  };
+
+	  scale.copy = function() {
+	    return ordinal()
+	        .domain(domain)
+	        .range(range$$1)
+	        .unknown(unknown);
+	  };
+
+	  return scale;
+	}
+
+	function band() {
+	  var scale = ordinal().unknown(undefined),
+	      domain = scale.domain,
+	      ordinalRange = scale.range,
+	      range$$1 = [0, 1],
+	      step,
+	      bandwidth,
+	      round = false,
+	      paddingInner = 0,
+	      paddingOuter = 0,
+	      align = 0.5;
+
+	  delete scale.unknown;
+
+	  function rescale() {
+	    var n = domain().length,
+	        reverse = range$$1[1] < range$$1[0],
+	        start = range$$1[reverse - 0],
+	        stop = range$$1[1 - reverse];
+	    step = (stop - start) / Math.max(1, n - paddingInner + paddingOuter * 2);
+	    if (round) step = Math.floor(step);
+	    start += (stop - start - step * (n - paddingInner)) * align;
+	    bandwidth = step * (1 - paddingInner);
+	    if (round) start = Math.round(start), bandwidth = Math.round(bandwidth);
+	    var values = d3Array.range(n).map(function(i) { return start + step * i; });
+	    return ordinalRange(reverse ? values.reverse() : values);
+	  }
+
+	  scale.domain = function(_) {
+	    return arguments.length ? (domain(_), rescale()) : domain();
+	  };
+
+	  scale.range = function(_) {
+	    return arguments.length ? (range$$1 = [+_[0], +_[1]], rescale()) : range$$1.slice();
+	  };
+
+	  scale.rangeRound = function(_) {
+	    return range$$1 = [+_[0], +_[1]], round = true, rescale();
+	  };
+
+	  scale.bandwidth = function() {
+	    return bandwidth;
+	  };
+
+	  scale.step = function() {
+	    return step;
+	  };
+
+	  scale.round = function(_) {
+	    return arguments.length ? (round = !!_, rescale()) : round;
+	  };
+
+	  scale.padding = function(_) {
+	    return arguments.length ? (paddingInner = paddingOuter = Math.max(0, Math.min(1, _)), rescale()) : paddingInner;
+	  };
+
+	  scale.paddingInner = function(_) {
+	    return arguments.length ? (paddingInner = Math.max(0, Math.min(1, _)), rescale()) : paddingInner;
+	  };
+
+	  scale.paddingOuter = function(_) {
+	    return arguments.length ? (paddingOuter = Math.max(0, Math.min(1, _)), rescale()) : paddingOuter;
+	  };
+
+	  scale.align = function(_) {
+	    return arguments.length ? (align = Math.max(0, Math.min(1, _)), rescale()) : align;
+	  };
+
+	  scale.copy = function() {
+	    return band()
+	        .domain(domain())
+	        .range(range$$1)
+	        .round(round)
+	        .paddingInner(paddingInner)
+	        .paddingOuter(paddingOuter)
+	        .align(align);
+	  };
+
+	  return rescale();
+	}
+
+	function pointish(scale) {
+	  var copy = scale.copy;
+
+	  scale.padding = scale.paddingOuter;
+	  delete scale.paddingInner;
+	  delete scale.paddingOuter;
+
+	  scale.copy = function() {
+	    return pointish(copy());
+	  };
+
+	  return scale;
+	}
+
+	function point() {
+	  return pointish(band().paddingInner(1));
+	}
+
+	var constant = function(x) {
+	  return function() {
+	    return x;
+	  };
+	};
+
+	var number = function(x) {
+	  return +x;
+	};
+
+	var unit = [0, 1];
+
+	function deinterpolateLinear(a, b) {
+	  return (b -= (a = +a))
+	      ? function(x) { return (x - a) / b; }
+	      : constant(b);
+	}
+
+	function deinterpolateClamp(deinterpolate) {
+	  return function(a, b) {
+	    var d = deinterpolate(a = +a, b = +b);
+	    return function(x) { return x <= a ? 0 : x >= b ? 1 : d(x); };
+	  };
+	}
+
+	function reinterpolateClamp(reinterpolate) {
+	  return function(a, b) {
+	    var r = reinterpolate(a = +a, b = +b);
+	    return function(t) { return t <= 0 ? a : t >= 1 ? b : r(t); };
+	  };
+	}
+
+	function bimap(domain, range$$1, deinterpolate, reinterpolate) {
+	  var d0 = domain[0], d1 = domain[1], r0 = range$$1[0], r1 = range$$1[1];
+	  if (d1 < d0) d0 = deinterpolate(d1, d0), r0 = reinterpolate(r1, r0);
+	  else d0 = deinterpolate(d0, d1), r0 = reinterpolate(r0, r1);
+	  return function(x) { return r0(d0(x)); };
+	}
+
+	function polymap(domain, range$$1, deinterpolate, reinterpolate) {
+	  var j = Math.min(domain.length, range$$1.length) - 1,
+	      d = new Array(j),
+	      r = new Array(j),
+	      i = -1;
+
+	  // Reverse descending domains.
+	  if (domain[j] < domain[0]) {
+	    domain = domain.slice().reverse();
+	    range$$1 = range$$1.slice().reverse();
+	  }
+
+	  while (++i < j) {
+	    d[i] = deinterpolate(domain[i], domain[i + 1]);
+	    r[i] = reinterpolate(range$$1[i], range$$1[i + 1]);
+	  }
+
+	  return function(x) {
+	    var i = d3Array.bisect(domain, x, 1, j) - 1;
+	    return r[i](d[i](x));
+	  };
+	}
+
+	function copy(source, target) {
+	  return target
+	      .domain(source.domain())
+	      .range(source.range())
+	      .interpolate(source.interpolate())
+	      .clamp(source.clamp());
+	}
+
+	// deinterpolate(a, b)(x) takes a domain value x in [a,b] and returns the corresponding parameter t in [0,1].
+	// reinterpolate(a, b)(t) takes a parameter t in [0,1] and returns the corresponding domain value x in [a,b].
+	function continuous(deinterpolate, reinterpolate) {
+	  var domain = unit,
+	      range$$1 = unit,
+	      interpolate$$1 = d3Interpolate.interpolate,
+	      clamp = false,
+	      piecewise,
+	      output,
+	      input;
+
+	  function rescale() {
+	    piecewise = Math.min(domain.length, range$$1.length) > 2 ? polymap : bimap;
+	    output = input = null;
+	    return scale;
+	  }
+
+	  function scale(x) {
+	    return (output || (output = piecewise(domain, range$$1, clamp ? deinterpolateClamp(deinterpolate) : deinterpolate, interpolate$$1)))(+x);
+	  }
+
+	  scale.invert = function(y) {
+	    return (input || (input = piecewise(range$$1, domain, deinterpolateLinear, clamp ? reinterpolateClamp(reinterpolate) : reinterpolate)))(+y);
+	  };
+
+	  scale.domain = function(_) {
+	    return arguments.length ? (domain = map$1.call(_, number), rescale()) : domain.slice();
+	  };
+
+	  scale.range = function(_) {
+	    return arguments.length ? (range$$1 = slice.call(_), rescale()) : range$$1.slice();
+	  };
+
+	  scale.rangeRound = function(_) {
+	    return range$$1 = slice.call(_), interpolate$$1 = d3Interpolate.interpolateRound, rescale();
+	  };
+
+	  scale.clamp = function(_) {
+	    return arguments.length ? (clamp = !!_, rescale()) : clamp;
+	  };
+
+	  scale.interpolate = function(_) {
+	    return arguments.length ? (interpolate$$1 = _, rescale()) : interpolate$$1;
+	  };
+
+	  return rescale();
+	}
+
+	var tickFormat = function(domain, count, specifier) {
+	  var start = domain[0],
+	      stop = domain[domain.length - 1],
+	      step = d3Array.tickStep(start, stop, count == null ? 10 : count),
+	      precision;
+	  specifier = d3Format.formatSpecifier(specifier == null ? ",f" : specifier);
+	  switch (specifier.type) {
+	    case "s": {
+	      var value = Math.max(Math.abs(start), Math.abs(stop));
+	      if (specifier.precision == null && !isNaN(precision = d3Format.precisionPrefix(step, value))) specifier.precision = precision;
+	      return d3Format.formatPrefix(specifier, value);
+	    }
+	    case "":
+	    case "e":
+	    case "g":
+	    case "p":
+	    case "r": {
+	      if (specifier.precision == null && !isNaN(precision = d3Format.precisionRound(step, Math.max(Math.abs(start), Math.abs(stop))))) specifier.precision = precision - (specifier.type === "e");
+	      break;
+	    }
+	    case "f":
+	    case "%": {
+	      if (specifier.precision == null && !isNaN(precision = d3Format.precisionFixed(step))) specifier.precision = precision - (specifier.type === "%") * 2;
+	      break;
+	    }
+	  }
+	  return d3Format.format(specifier);
+	};
+
+	function linearish(scale) {
+	  var domain = scale.domain;
+
+	  scale.ticks = function(count) {
+	    var d = domain();
+	    return d3Array.ticks(d[0], d[d.length - 1], count == null ? 10 : count);
+	  };
+
+	  scale.tickFormat = function(count, specifier) {
+	    return tickFormat(domain(), count, specifier);
+	  };
+
+	  scale.nice = function(count) {
+	    var d = domain(),
+	        i = d.length - 1,
+	        n = count == null ? 10 : count,
+	        start = d[0],
+	        stop = d[i],
+	        step = d3Array.tickStep(start, stop, n);
+
+	    if (step) {
+	      step = d3Array.tickStep(Math.floor(start / step) * step, Math.ceil(stop / step) * step, n);
+	      d[0] = Math.floor(start / step) * step;
+	      d[i] = Math.ceil(stop / step) * step;
+	      domain(d);
+	    }
+
+	    return scale;
+	  };
+
+	  return scale;
+	}
+
+	function linear() {
+	  var scale = continuous(deinterpolateLinear, d3Interpolate.interpolateNumber);
+
+	  scale.copy = function() {
+	    return copy(scale, linear());
+	  };
+
+	  return linearish(scale);
+	}
+
+	function identity() {
+	  var domain = [0, 1];
+
+	  function scale(x) {
+	    return +x;
+	  }
+
+	  scale.invert = scale;
+
+	  scale.domain = scale.range = function(_) {
+	    return arguments.length ? (domain = map$1.call(_, number), scale) : domain.slice();
+	  };
+
+	  scale.copy = function() {
+	    return identity().domain(domain);
+	  };
+
+	  return linearish(scale);
+	}
+
+	var nice = function(domain, interval) {
+	  domain = domain.slice();
+
+	  var i0 = 0,
+	      i1 = domain.length - 1,
+	      x0 = domain[i0],
+	      x1 = domain[i1],
+	      t;
+
+	  if (x1 < x0) {
+	    t = i0, i0 = i1, i1 = t;
+	    t = x0, x0 = x1, x1 = t;
+	  }
+
+	  domain[i0] = interval.floor(x0);
+	  domain[i1] = interval.ceil(x1);
+	  return domain;
+	};
+
+	function deinterpolate(a, b) {
+	  return (b = Math.log(b / a))
+	      ? function(x) { return Math.log(x / a) / b; }
+	      : constant(b);
+	}
+
+	function reinterpolate(a, b) {
+	  return a < 0
+	      ? function(t) { return -Math.pow(-b, t) * Math.pow(-a, 1 - t); }
+	      : function(t) { return Math.pow(b, t) * Math.pow(a, 1 - t); };
+	}
+
+	function pow10(x) {
+	  return isFinite(x) ? +("1e" + x) : x < 0 ? 0 : x;
+	}
+
+	function powp(base) {
+	  return base === 10 ? pow10
+	      : base === Math.E ? Math.exp
+	      : function(x) { return Math.pow(base, x); };
+	}
+
+	function logp(base) {
+	  return base === Math.E ? Math.log
+	      : base === 10 && Math.log10
+	      || base === 2 && Math.log2
+	      || (base = Math.log(base), function(x) { return Math.log(x) / base; });
+	}
+
+	function reflect(f) {
+	  return function(x) {
+	    return -f(-x);
+	  };
+	}
+
+	function log() {
+	  var scale = continuous(deinterpolate, reinterpolate).domain([1, 10]),
+	      domain = scale.domain,
+	      base = 10,
+	      logs = logp(10),
+	      pows = powp(10);
+
+	  function rescale() {
+	    logs = logp(base), pows = powp(base);
+	    if (domain()[0] < 0) logs = reflect(logs), pows = reflect(pows);
+	    return scale;
+	  }
+
+	  scale.base = function(_) {
+	    return arguments.length ? (base = +_, rescale()) : base;
+	  };
+
+	  scale.domain = function(_) {
+	    return arguments.length ? (domain(_), rescale()) : domain();
+	  };
+
+	  scale.ticks = function(count) {
+	    var d = domain(),
+	        u = d[0],
+	        v = d[d.length - 1],
+	        r;
+
+	    if (r = v < u) i = u, u = v, v = i;
+
+	    var i = logs(u),
+	        j = logs(v),
+	        p,
+	        k,
+	        t,
+	        n = count == null ? 10 : +count,
+	        z = [];
+
+	    if (!(base % 1) && j - i < n) {
+	      i = Math.round(i) - 1, j = Math.round(j) + 1;
+	      if (u > 0) for (; i < j; ++i) {
+	        for (k = 1, p = pows(i); k < base; ++k) {
+	          t = p * k;
+	          if (t < u) continue;
+	          if (t > v) break;
+	          z.push(t);
+	        }
+	      } else for (; i < j; ++i) {
+	        for (k = base - 1, p = pows(i); k >= 1; --k) {
+	          t = p * k;
+	          if (t < u) continue;
+	          if (t > v) break;
+	          z.push(t);
+	        }
+	      }
+	    } else {
+	      z = d3Array.ticks(i, j, Math.min(j - i, n)).map(pows);
+	    }
+
+	    return r ? z.reverse() : z;
+	  };
+
+	  scale.tickFormat = function(count, specifier) {
+	    if (specifier == null) specifier = base === 10 ? ".0e" : ",";
+	    if (typeof specifier !== "function") specifier = d3Format.format(specifier);
+	    if (count === Infinity) return specifier;
+	    if (count == null) count = 10;
+	    var k = Math.max(1, base * count / scale.ticks().length); // TODO fast estimate?
+	    return function(d) {
+	      var i = d / pows(Math.round(logs(d)));
+	      if (i * base < base - 0.5) i *= base;
+	      return i <= k ? specifier(d) : "";
+	    };
+	  };
+
+	  scale.nice = function() {
+	    return domain(nice(domain(), {
+	      floor: function(x) { return pows(Math.floor(logs(x))); },
+	      ceil: function(x) { return pows(Math.ceil(logs(x))); }
+	    }));
+	  };
+
+	  scale.copy = function() {
+	    return copy(scale, log().base(base));
+	  };
+
+	  return scale;
+	}
+
+	function raise(x, exponent) {
+	  return x < 0 ? -Math.pow(-x, exponent) : Math.pow(x, exponent);
+	}
+
+	function pow() {
+	  var exponent = 1,
+	      scale = continuous(deinterpolate, reinterpolate),
+	      domain = scale.domain;
+
+	  function deinterpolate(a, b) {
+	    return (b = raise(b, exponent) - (a = raise(a, exponent)))
+	        ? function(x) { return (raise(x, exponent) - a) / b; }
+	        : constant(b);
+	  }
+
+	  function reinterpolate(a, b) {
+	    b = raise(b, exponent) - (a = raise(a, exponent));
+	    return function(t) { return raise(a + b * t, 1 / exponent); };
+	  }
+
+	  scale.exponent = function(_) {
+	    return arguments.length ? (exponent = +_, domain(domain())) : exponent;
+	  };
+
+	  scale.copy = function() {
+	    return copy(scale, pow().exponent(exponent));
+	  };
+
+	  return linearish(scale);
+	}
+
+	function sqrt() {
+	  return pow().exponent(0.5);
+	}
+
+	function quantile$1() {
+	  var domain = [],
+	      range$$1 = [],
+	      thresholds = [];
+
+	  function rescale() {
+	    var i = 0, n = Math.max(1, range$$1.length);
+	    thresholds = new Array(n - 1);
+	    while (++i < n) thresholds[i - 1] = d3Array.quantile(domain, i / n);
+	    return scale;
+	  }
+
+	  function scale(x) {
+	    if (!isNaN(x = +x)) return range$$1[d3Array.bisect(thresholds, x)];
+	  }
+
+	  scale.invertExtent = function(y) {
+	    var i = range$$1.indexOf(y);
+	    return i < 0 ? [NaN, NaN] : [
+	      i > 0 ? thresholds[i - 1] : domain[0],
+	      i < thresholds.length ? thresholds[i] : domain[domain.length - 1]
+	    ];
+	  };
+
+	  scale.domain = function(_) {
+	    if (!arguments.length) return domain.slice();
+	    domain = [];
+	    for (var i = 0, n = _.length, d; i < n; ++i) if (d = _[i], d != null && !isNaN(d = +d)) domain.push(d);
+	    domain.sort(d3Array.ascending);
+	    return rescale();
+	  };
+
+	  scale.range = function(_) {
+	    return arguments.length ? (range$$1 = slice.call(_), rescale()) : range$$1.slice();
+	  };
+
+	  scale.quantiles = function() {
+	    return thresholds.slice();
+	  };
+
+	  scale.copy = function() {
+	    return quantile$1()
+	        .domain(domain)
+	        .range(range$$1);
+	  };
+
+	  return scale;
+	}
+
+	function quantize() {
+	  var x0 = 0,
+	      x1 = 1,
+	      n = 1,
+	      domain = [0.5],
+	      range$$1 = [0, 1];
+
+	  function scale(x) {
+	    if (x <= x) return range$$1[d3Array.bisect(domain, x, 0, n)];
+	  }
+
+	  function rescale() {
+	    var i = -1;
+	    domain = new Array(n);
+	    while (++i < n) domain[i] = ((i + 1) * x1 - (i - n) * x0) / (n + 1);
+	    return scale;
+	  }
+
+	  scale.domain = function(_) {
+	    return arguments.length ? (x0 = +_[0], x1 = +_[1], rescale()) : [x0, x1];
+	  };
+
+	  scale.range = function(_) {
+	    return arguments.length ? (n = (range$$1 = slice.call(_)).length - 1, rescale()) : range$$1.slice();
+	  };
+
+	  scale.invertExtent = function(y) {
+	    var i = range$$1.indexOf(y);
+	    return i < 0 ? [NaN, NaN]
+	        : i < 1 ? [x0, domain[0]]
+	        : i >= n ? [domain[n - 1], x1]
+	        : [domain[i - 1], domain[i]];
+	  };
+
+	  scale.copy = function() {
+	    return quantize()
+	        .domain([x0, x1])
+	        .range(range$$1);
+	  };
+
+	  return linearish(scale);
+	}
+
+	function threshold() {
+	  var domain = [0.5],
+	      range$$1 = [0, 1],
+	      n = 1;
+
+	  function scale(x) {
+	    if (x <= x) return range$$1[d3Array.bisect(domain, x, 0, n)];
+	  }
+
+	  scale.domain = function(_) {
+	    return arguments.length ? (domain = slice.call(_), n = Math.min(domain.length, range$$1.length - 1), scale) : domain.slice();
+	  };
+
+	  scale.range = function(_) {
+	    return arguments.length ? (range$$1 = slice.call(_), n = Math.min(domain.length, range$$1.length - 1), scale) : range$$1.slice();
+	  };
+
+	  scale.invertExtent = function(y) {
+	    var i = range$$1.indexOf(y);
+	    return [domain[i - 1], domain[i]];
+	  };
+
+	  scale.copy = function() {
+	    return threshold()
+	        .domain(domain)
+	        .range(range$$1);
+	  };
+
+	  return scale;
+	}
+
+	var durationSecond = 1000;
+	var durationMinute = durationSecond * 60;
+	var durationHour = durationMinute * 60;
+	var durationDay = durationHour * 24;
+	var durationWeek = durationDay * 7;
+	var durationMonth = durationDay * 30;
+	var durationYear = durationDay * 365;
+
+	function date(t) {
+	  return new Date(t);
+	}
+
+	function number$1(t) {
+	  return t instanceof Date ? +t : +new Date(+t);
+	}
+
+	function calendar(year, month, week, day, hour, minute, second, millisecond, format$$1) {
+	  var scale = continuous(deinterpolateLinear, d3Interpolate.interpolateNumber),
+	      invert = scale.invert,
+	      domain = scale.domain;
+
+	  var formatMillisecond = format$$1(".%L"),
+	      formatSecond = format$$1(":%S"),
+	      formatMinute = format$$1("%I:%M"),
+	      formatHour = format$$1("%I %p"),
+	      formatDay = format$$1("%a %d"),
+	      formatWeek = format$$1("%b %d"),
+	      formatMonth = format$$1("%B"),
+	      formatYear = format$$1("%Y");
+
+	  var tickIntervals = [
+	    [second,  1,      durationSecond],
+	    [second,  5,  5 * durationSecond],
+	    [second, 15, 15 * durationSecond],
+	    [second, 30, 30 * durationSecond],
+	    [minute,  1,      durationMinute],
+	    [minute,  5,  5 * durationMinute],
+	    [minute, 15, 15 * durationMinute],
+	    [minute, 30, 30 * durationMinute],
+	    [  hour,  1,      durationHour  ],
+	    [  hour,  3,  3 * durationHour  ],
+	    [  hour,  6,  6 * durationHour  ],
+	    [  hour, 12, 12 * durationHour  ],
+	    [   day,  1,      durationDay   ],
+	    [   day,  2,  2 * durationDay   ],
+	    [  week,  1,      durationWeek  ],
+	    [ month,  1,      durationMonth ],
+	    [ month,  3,  3 * durationMonth ],
+	    [  year,  1,      durationYear  ]
+	  ];
+
+	  function tickFormat(date) {
+	    return (second(date) < date ? formatMillisecond
+	        : minute(date) < date ? formatSecond
+	        : hour(date) < date ? formatMinute
+	        : day(date) < date ? formatHour
+	        : month(date) < date ? (week(date) < date ? formatDay : formatWeek)
+	        : year(date) < date ? formatMonth
+	        : formatYear)(date);
+	  }
+
+	  function tickInterval(interval, start, stop, step) {
+	    if (interval == null) interval = 10;
+
+	    // If a desired tick count is specified, pick a reasonable tick interval
+	    // based on the extent of the domain and a rough estimate of tick size.
+	    // Otherwise, assume interval is already a time interval and use it.
+	    if (typeof interval === "number") {
+	      var target = Math.abs(stop - start) / interval,
+	          i = d3Array.bisector(function(i) { return i[2]; }).right(tickIntervals, target);
+	      if (i === tickIntervals.length) {
+	        step = d3Array.tickStep(start / durationYear, stop / durationYear, interval);
+	        interval = year;
+	      } else if (i) {
+	        i = tickIntervals[target / tickIntervals[i - 1][2] < tickIntervals[i][2] / target ? i - 1 : i];
+	        step = i[1];
+	        interval = i[0];
+	      } else {
+	        step = d3Array.tickStep(start, stop, interval);
+	        interval = millisecond;
+	      }
+	    }
+
+	    return step == null ? interval : interval.every(step);
+	  }
+
+	  scale.invert = function(y) {
+	    return new Date(invert(y));
+	  };
+
+	  scale.domain = function(_) {
+	    return arguments.length ? domain(map$1.call(_, number$1)) : domain().map(date);
+	  };
+
+	  scale.ticks = function(interval, step) {
+	    var d = domain(),
+	        t0 = d[0],
+	        t1 = d[d.length - 1],
+	        r = t1 < t0,
+	        t;
+	    if (r) t = t0, t0 = t1, t1 = t;
+	    t = tickInterval(interval, t0, t1, step);
+	    t = t ? t.range(t0, t1 + 1) : []; // inclusive stop
+	    return r ? t.reverse() : t;
+	  };
+
+	  scale.tickFormat = function(count, specifier) {
+	    return specifier == null ? tickFormat : format$$1(specifier);
+	  };
+
+	  scale.nice = function(interval, step) {
+	    var d = domain();
+	    return (interval = tickInterval(interval, d[0], d[d.length - 1], step))
+	        ? domain(nice(d, interval))
+	        : scale;
+	  };
+
+	  scale.copy = function() {
+	    return copy(scale, calendar(year, month, week, day, hour, minute, second, millisecond, format$$1));
+	  };
+
+	  return scale;
+	}
+
+	var time = function() {
+	  return calendar(d3Time.timeYear, d3Time.timeMonth, d3Time.timeWeek, d3Time.timeDay, d3Time.timeHour, d3Time.timeMinute, d3Time.timeSecond, d3Time.timeMillisecond, d3TimeFormat.timeFormat).domain([new Date(2000, 0, 1), new Date(2000, 0, 2)]);
+	};
+
+	var utcTime = function() {
+	  return calendar(d3Time.utcYear, d3Time.utcMonth, d3Time.utcWeek, d3Time.utcDay, d3Time.utcHour, d3Time.utcMinute, d3Time.utcSecond, d3Time.utcMillisecond, d3TimeFormat.utcFormat).domain([Date.UTC(2000, 0, 1), Date.UTC(2000, 0, 2)]);
+	};
+
+	var colors = function(s) {
+	  return s.match(/.{6}/g).map(function(x) {
+	    return "#" + x;
+	  });
+	};
+
+	var category10 = colors("1f77b4ff7f0e2ca02cd627289467bd8c564be377c27f7f7fbcbd2217becf");
+
+	var category20b = colors("393b795254a36b6ecf9c9ede6379398ca252b5cf6bcedb9c8c6d31bd9e39e7ba52e7cb94843c39ad494ad6616be7969c7b4173a55194ce6dbdde9ed6");
+
+	var category20c = colors("3182bd6baed69ecae1c6dbefe6550dfd8d3cfdae6bfdd0a231a35474c476a1d99bc7e9c0756bb19e9ac8bcbddcdadaeb636363969696bdbdbdd9d9d9");
+
+	var category20 = colors("1f77b4aec7e8ff7f0effbb782ca02c98df8ad62728ff98969467bdc5b0d58c564bc49c94e377c2f7b6d27f7f7fc7c7c7bcbd22dbdb8d17becf9edae5");
+
+	var cubehelix$1 = d3Interpolate.interpolateCubehelixLong(d3Color.cubehelix(300, 0.5, 0.0), d3Color.cubehelix(-240, 0.5, 1.0));
+
+	var warm = d3Interpolate.interpolateCubehelixLong(d3Color.cubehelix(-100, 0.75, 0.35), d3Color.cubehelix(80, 1.50, 0.8));
+
+	var cool = d3Interpolate.interpolateCubehelixLong(d3Color.cubehelix(260, 0.75, 0.35), d3Color.cubehelix(80, 1.50, 0.8));
+
+	var rainbow = d3Color.cubehelix();
+
+	var rainbow$1 = function(t) {
+	  if (t < 0 || t > 1) t -= Math.floor(t);
+	  var ts = Math.abs(t - 0.5);
+	  rainbow.h = 360 * t - 100;
+	  rainbow.s = 1.5 - 1.5 * ts;
+	  rainbow.l = 0.8 - 0.9 * ts;
+	  return rainbow + "";
+	};
+
+	function ramp(range$$1) {
+	  var n = range$$1.length;
+	  return function(t) {
+	    return range$$1[Math.max(0, Math.min(n - 1, Math.floor(t * n)))];
+	  };
+	}
+
+	var viridis = ramp(colors("44015444025645045745055946075a46085c460a5d460b5e470d60470e6147106347116447136548146748166848176948186a481a6c481b6d481c6e481d6f481f70482071482173482374482475482576482677482878482979472a7a472c7a472d7b472e7c472f7d46307e46327e46337f463480453581453781453882443983443a83443b84433d84433e85423f854240864241864142874144874045884046883f47883f48893e49893e4a893e4c8a3d4d8a3d4e8a3c4f8a3c508b3b518b3b528b3a538b3a548c39558c39568c38588c38598c375a8c375b8d365c8d365d8d355e8d355f8d34608d34618d33628d33638d32648e32658e31668e31678e31688e30698e306a8e2f6b8e2f6c8e2e6d8e2e6e8e2e6f8e2d708e2d718e2c718e2c728e2c738e2b748e2b758e2a768e2a778e2a788e29798e297a8e297b8e287c8e287d8e277e8e277f8e27808e26818e26828e26828e25838e25848e25858e24868e24878e23888e23898e238a8d228b8d228c8d228d8d218e8d218f8d21908d21918c20928c20928c20938c1f948c1f958b1f968b1f978b1f988b1f998a1f9a8a1e9b8a1e9c891e9d891f9e891f9f881fa0881fa1881fa1871fa28720a38620a48621a58521a68522a78522a88423a98324aa8325ab8225ac8226ad8127ad8128ae8029af7f2ab07f2cb17e2db27d2eb37c2fb47c31b57b32b67a34b67935b77937b87838b9773aba763bbb753dbc743fbc7340bd7242be7144bf7046c06f48c16e4ac16d4cc26c4ec36b50c46a52c56954c56856c66758c7655ac8645cc8635ec96260ca6063cb5f65cb5e67cc5c69cd5b6ccd5a6ece5870cf5773d05675d05477d1537ad1517cd2507fd34e81d34d84d44b86d54989d5488bd6468ed64590d74393d74195d84098d83e9bd93c9dd93ba0da39a2da37a5db36a8db34aadc32addc30b0dd2fb2dd2db5de2bb8de29bade28bddf26c0df25c2df23c5e021c8e020cae11fcde11dd0e11cd2e21bd5e21ad8e219dae319dde318dfe318e2e418e5e419e7e419eae51aece51befe51cf1e51df4e61ef6e620f8e621fbe723fde725"));
+
+	var magma = ramp(colors("00000401000501010601010802010902020b02020d03030f03031204041405041606051806051a07061c08071e0907200a08220b09240c09260d0a290e0b2b100b2d110c2f120d31130d34140e36150e38160f3b180f3d19103f1a10421c10441d11471e114920114b21114e22115024125325125527125829115a2a115c2c115f2d11612f116331116533106734106936106b38106c390f6e3b0f703d0f713f0f72400f74420f75440f764510774710784910784a10794c117a4e117b4f127b51127c52137c54137d56147d57157e59157e5a167e5c167f5d177f5f187f601880621980641a80651a80671b80681c816a1c816b1d816d1d816e1e81701f81721f817320817521817621817822817922827b23827c23827e24828025828125818326818426818627818827818928818b29818c29818e2a81902a81912b81932b80942c80962c80982d80992d809b2e7f9c2e7f9e2f7fa02f7fa1307ea3307ea5317ea6317da8327daa337dab337cad347cae347bb0357bb2357bb3367ab5367ab73779b83779ba3878bc3978bd3977bf3a77c03a76c23b75c43c75c53c74c73d73c83e73ca3e72cc3f71cd4071cf4070d0416fd2426fd3436ed5446dd6456cd8456cd9466bdb476adc4869de4968df4a68e04c67e24d66e34e65e44f64e55064e75263e85362e95462ea5661eb5760ec5860ed5a5fee5b5eef5d5ef05f5ef1605df2625df2645cf3655cf4675cf4695cf56b5cf66c5cf66e5cf7705cf7725cf8745cf8765cf9785df9795df97b5dfa7d5efa7f5efa815ffb835ffb8560fb8761fc8961fc8a62fc8c63fc8e64fc9065fd9266fd9467fd9668fd9869fd9a6afd9b6bfe9d6cfe9f6dfea16efea36ffea571fea772fea973feaa74feac76feae77feb078feb27afeb47bfeb67cfeb77efeb97ffebb81febd82febf84fec185fec287fec488fec68afec88cfeca8dfecc8ffecd90fecf92fed194fed395fed597fed799fed89afdda9cfddc9efddea0fde0a1fde2a3fde3a5fde5a7fde7a9fde9aafdebacfcecaefceeb0fcf0b2fcf2b4fcf4b6fcf6b8fcf7b9fcf9bbfcfbbdfcfdbf"));
+
+	var inferno = ramp(colors("00000401000501010601010802010a02020c02020e03021004031204031405041706041907051b08051d09061f0a07220b07240c08260d08290e092b10092d110a30120a32140b34150b37160b39180c3c190c3e1b0c411c0c431e0c451f0c48210c4a230c4c240c4f260c51280b53290b552b0b572d0b592f0a5b310a5c320a5e340a5f3609613809623909633b09643d09653e0966400a67420a68440a68450a69470b6a490b6a4a0c6b4c0c6b4d0d6c4f0d6c510e6c520e6d540f6d550f6d57106e59106e5a116e5c126e5d126e5f136e61136e62146e64156e65156e67166e69166e6a176e6c186e6d186e6f196e71196e721a6e741a6e751b6e771c6d781c6d7a1d6d7c1d6d7d1e6d7f1e6c801f6c82206c84206b85216b87216b88226a8a226a8c23698d23698f24699025689225689326679526679727669827669a28659b29649d29649f2a63a02a63a22b62a32c61a52c60a62d60a82e5fa92e5eab2f5ead305dae305cb0315bb1325ab3325ab43359b63458b73557b93556ba3655bc3754bd3853bf3952c03a51c13a50c33b4fc43c4ec63d4dc73e4cc83f4bca404acb4149cc4248ce4347cf4446d04545d24644d34743d44842d54a41d74b3fd84c3ed94d3dda4e3cdb503bdd513ade5238df5337e05536e15635e25734e35933e45a31e55c30e65d2fe75e2ee8602de9612bea632aeb6429eb6628ec6726ed6925ee6a24ef6c23ef6e21f06f20f1711ff1731df2741cf3761bf37819f47918f57b17f57d15f67e14f68013f78212f78410f8850ff8870ef8890cf98b0bf98c0af98e09fa9008fa9207fa9407fb9606fb9706fb9906fb9b06fb9d07fc9f07fca108fca309fca50afca60cfca80dfcaa0ffcac11fcae12fcb014fcb216fcb418fbb61afbb81dfbba1ffbbc21fbbe23fac026fac228fac42afac62df9c72ff9c932f9cb35f8cd37f8cf3af7d13df7d340f6d543f6d746f5d949f5db4cf4dd4ff4df53f4e156f3e35af3e55df2e661f2e865f2ea69f1ec6df1ed71f1ef75f1f179f2f27df2f482f3f586f3f68af4f88ef5f992f6fa96f8fb9af9fc9dfafda1fcffa4"));
+
+	var plasma = ramp(colors("0d088710078813078916078a19068c1b068d1d068e20068f2206902406912605912805922a05932c05942e05952f059631059733059735049837049938049a3a049a3c049b3e049c3f049c41049d43039e44039e46039f48039f4903a04b03a14c02a14e02a25002a25102a35302a35502a45601a45801a45901a55b01a55c01a65e01a66001a66100a76300a76400a76600a76700a86900a86a00a86c00a86e00a86f00a87100a87201a87401a87501a87701a87801a87a02a87b02a87d03a87e03a88004a88104a78305a78405a78606a68707a68808a68a09a58b0aa58d0ba58e0ca48f0da4910ea3920fa39410a29511a19613a19814a099159f9a169f9c179e9d189d9e199da01a9ca11b9ba21d9aa31e9aa51f99a62098a72197a82296aa2395ab2494ac2694ad2793ae2892b02991b12a90b22b8fb32c8eb42e8db52f8cb6308bb7318ab83289ba3388bb3488bc3587bd3786be3885bf3984c03a83c13b82c23c81c33d80c43e7fc5407ec6417dc7427cc8437bc9447aca457acb4679cc4778cc4977cd4a76ce4b75cf4c74d04d73d14e72d24f71d35171d45270d5536fd5546ed6556dd7566cd8576bd9586ada5a6ada5b69db5c68dc5d67dd5e66de5f65de6164df6263e06363e16462e26561e26660e3685fe4695ee56a5de56b5de66c5ce76e5be76f5ae87059e97158e97257ea7457eb7556eb7655ec7754ed7953ed7a52ee7b51ef7c51ef7e50f07f4ff0804ef1814df1834cf2844bf3854bf3874af48849f48948f58b47f58c46f68d45f68f44f79044f79143f79342f89441f89540f9973ff9983ef99a3efa9b3dfa9c3cfa9e3bfb9f3afba139fba238fca338fca537fca636fca835fca934fdab33fdac33fdae32fdaf31fdb130fdb22ffdb42ffdb52efeb72dfeb82cfeba2cfebb2bfebd2afebe2afec029fdc229fdc328fdc527fdc627fdc827fdca26fdcb26fccd25fcce25fcd025fcd225fbd324fbd524fbd724fad824fada24f9dc24f9dd25f8df25f8e125f7e225f7e425f6e626f6e826f5e926f5eb27f4ed27f3ee27f3f027f2f227f1f426f1f525f0f724f0f921"));
+
+	function sequential(interpolator) {
+	  var x0 = 0,
+	      x1 = 1,
+	      clamp = false;
+
+	  function scale(x) {
+	    var t = (x - x0) / (x1 - x0);
+	    return interpolator(clamp ? Math.max(0, Math.min(1, t)) : t);
+	  }
+
+	  scale.domain = function(_) {
+	    return arguments.length ? (x0 = +_[0], x1 = +_[1], scale) : [x0, x1];
+	  };
+
+	  scale.clamp = function(_) {
+	    return arguments.length ? (clamp = !!_, scale) : clamp;
+	  };
+
+	  scale.interpolator = function(_) {
+	    return arguments.length ? (interpolator = _, scale) : interpolator;
+	  };
+
+	  scale.copy = function() {
+	    return sequential(interpolator).domain([x0, x1]).clamp(clamp);
+	  };
+
+	  return linearish(scale);
+	}
+
+	exports.scaleBand = band;
+	exports.scalePoint = point;
+	exports.scaleIdentity = identity;
+	exports.scaleLinear = linear;
+	exports.scaleLog = log;
+	exports.scaleOrdinal = ordinal;
+	exports.scaleImplicit = implicit;
+	exports.scalePow = pow;
+	exports.scaleSqrt = sqrt;
+	exports.scaleQuantile = quantile$1;
+	exports.scaleQuantize = quantize;
+	exports.scaleThreshold = threshold;
+	exports.scaleTime = time;
+	exports.scaleUtc = utcTime;
+	exports.schemeCategory10 = category10;
+	exports.schemeCategory20b = category20b;
+	exports.schemeCategory20c = category20c;
+	exports.schemeCategory20 = category20;
+	exports.interpolateCubehelixDefault = cubehelix$1;
+	exports.interpolateRainbow = rainbow$1;
+	exports.interpolateWarm = warm;
+	exports.interpolateCool = cool;
+	exports.interpolateViridis = viridis;
+	exports.interpolateMagma = magma;
+	exports.interpolateInferno = inferno;
+	exports.interpolatePlasma = plasma;
+	exports.scaleSequential = sequential;
+
+	Object.defineProperty(exports, '__esModule', { value: true });
+
+	})));
+
+
+/***/ },
+/* 6 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// https://d3js.org/d3-array/ Version 1.1.0. Copyright 2017 Mike Bostock.
+	(function (global, factory) {
+		 true ? factory(exports) :
+		typeof define === 'function' && define.amd ? define(['exports'], factory) :
+		(factory((global.d3 = global.d3 || {})));
+	}(this, (function (exports) { 'use strict';
+
+	var ascending = function(a, b) {
+	  return a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
+	};
+
+	var bisector = function(compare) {
+	  if (compare.length === 1) compare = ascendingComparator(compare);
+	  return {
+	    left: function(a, x, lo, hi) {
+	      if (lo == null) lo = 0;
+	      if (hi == null) hi = a.length;
+	      while (lo < hi) {
+	        var mid = lo + hi >>> 1;
+	        if (compare(a[mid], x) < 0) lo = mid + 1;
+	        else hi = mid;
+	      }
+	      return lo;
+	    },
+	    right: function(a, x, lo, hi) {
+	      if (lo == null) lo = 0;
+	      if (hi == null) hi = a.length;
+	      while (lo < hi) {
+	        var mid = lo + hi >>> 1;
+	        if (compare(a[mid], x) > 0) hi = mid;
+	        else lo = mid + 1;
+	      }
+	      return lo;
+	    }
+	  };
+	};
+
+	function ascendingComparator(f) {
+	  return function(d, x) {
+	    return ascending(f(d), x);
+	  };
+	}
+
+	var ascendingBisect = bisector(ascending);
+	var bisectRight = ascendingBisect.right;
+	var bisectLeft = ascendingBisect.left;
+
+	var pairs = function(array, f) {
+	  if (f == null) f = pair;
+	  var i = 0, n = array.length - 1, p = array[0], pairs = new Array(n < 0 ? 0 : n);
+	  while (i < n) pairs[i] = f(p, p = array[++i]);
+	  return pairs;
+	};
+
+	function pair(a, b) {
+	  return [a, b];
+	}
+
+	var cross = function(a, b, f) {
+	  var na = a.length, nb = b.length, c = new Array(na * nb), ia, ib, ic, va;
+	  if (f == null) f = pair;
+	  for (ia = ic = 0; ia < na; ++ia) for (va = a[ia], ib = 0; ib < nb; ++ib, ++ic) c[ic] = f(va, b[ib]);
+	  return c;
+	};
+
+	var descending = function(a, b) {
+	  return b < a ? -1 : b > a ? 1 : b >= a ? 0 : NaN;
+	};
+
+	var number = function(x) {
+	  return x === null ? NaN : +x;
+	};
+
+	var variance = function(array, f) {
+	  var n = array.length,
+	      m = 0,
+	      a,
+	      d,
+	      s = 0,
+	      i = -1,
+	      j = 0;
+
+	  if (f == null) {
+	    while (++i < n) {
+	      if (!isNaN(a = number(array[i]))) {
+	        d = a - m;
+	        m += d / ++j;
+	        s += d * (a - m);
+	      }
+	    }
+	  }
+
+	  else {
+	    while (++i < n) {
+	      if (!isNaN(a = number(f(array[i], i, array)))) {
+	        d = a - m;
+	        m += d / ++j;
+	        s += d * (a - m);
+	      }
+	    }
+	  }
+
+	  if (j > 1) return s / (j - 1);
+	};
+
+	var deviation = function(array, f) {
+	  var v = variance(array, f);
+	  return v ? Math.sqrt(v) : v;
+	};
+
+	var extent = function(array, f) {
+	  var i = -1,
+	      n = array.length,
+	      a,
+	      b,
+	      c;
+
+	  if (f == null) {
+	    while (++i < n) if ((b = array[i]) != null && b >= b) { a = c = b; break; }
+	    while (++i < n) if ((b = array[i]) != null) {
+	      if (a > b) a = b;
+	      if (c < b) c = b;
+	    }
+	  }
+
+	  else {
+	    while (++i < n) if ((b = f(array[i], i, array)) != null && b >= b) { a = c = b; break; }
+	    while (++i < n) if ((b = f(array[i], i, array)) != null) {
+	      if (a > b) a = b;
+	      if (c < b) c = b;
+	    }
+	  }
+
+	  return [a, c];
+	};
+
+	var array = Array.prototype;
+
+	var slice = array.slice;
+	var map = array.map;
+
+	var constant = function(x) {
+	  return function() {
+	    return x;
+	  };
+	};
+
+	var identity = function(x) {
+	  return x;
+	};
+
+	var range = function(start, stop, step) {
+	  start = +start, stop = +stop, step = (n = arguments.length) < 2 ? (stop = start, start = 0, 1) : n < 3 ? 1 : +step;
+
+	  var i = -1,
+	      n = Math.max(0, Math.ceil((stop - start) / step)) | 0,
+	      range = new Array(n);
+
+	  while (++i < n) {
+	    range[i] = start + i * step;
+	  }
+
+	  return range;
+	};
+
+	var e10 = Math.sqrt(50);
+	var e5 = Math.sqrt(10);
+	var e2 = Math.sqrt(2);
+
+	var ticks = function(start, stop, count) {
+	  var step = tickStep(start, stop, count);
+	  return range(
+	    Math.ceil(start / step) * step,
+	    Math.floor(stop / step) * step + step / 2, // inclusive
+	    step
+	  );
+	};
+
+	function tickStep(start, stop, count) {
+	  var step0 = Math.abs(stop - start) / Math.max(0, count),
+	      step1 = Math.pow(10, Math.floor(Math.log(step0) / Math.LN10)),
+	      error = step0 / step1;
+	  if (error >= e10) step1 *= 10;
+	  else if (error >= e5) step1 *= 5;
+	  else if (error >= e2) step1 *= 2;
+	  return stop < start ? -step1 : step1;
+	}
+
+	var sturges = function(values) {
+	  return Math.ceil(Math.log(values.length) / Math.LN2) + 1;
+	};
+
+	var histogram = function() {
+	  var value = identity,
+	      domain = extent,
+	      threshold = sturges;
+
+	  function histogram(data) {
+	    var i,
+	        n = data.length,
+	        x,
+	        values = new Array(n);
+
+	    for (i = 0; i < n; ++i) {
+	      values[i] = value(data[i], i, data);
+	    }
+
+	    var xz = domain(values),
+	        x0 = xz[0],
+	        x1 = xz[1],
+	        tz = threshold(values, x0, x1);
+
+	    // Convert number of thresholds into uniform thresholds.
+	    if (!Array.isArray(tz)) tz = ticks(x0, x1, tz);
+
+	    // Remove any thresholds outside the domain.
+	    var m = tz.length;
+	    while (tz[0] <= x0) tz.shift(), --m;
+	    while (tz[m - 1] >= x1) tz.pop(), --m;
+
+	    var bins = new Array(m + 1),
+	        bin;
+
+	    // Initialize bins.
+	    for (i = 0; i <= m; ++i) {
+	      bin = bins[i] = [];
+	      bin.x0 = i > 0 ? tz[i - 1] : x0;
+	      bin.x1 = i < m ? tz[i] : x1;
+	    }
+
+	    // Assign data to bins by value, ignoring any outside the domain.
+	    for (i = 0; i < n; ++i) {
+	      x = values[i];
+	      if (x0 <= x && x <= x1) {
+	        bins[bisectRight(tz, x, 0, m)].push(data[i]);
+	      }
+	    }
+
+	    return bins;
+	  }
+
+	  histogram.value = function(_) {
+	    return arguments.length ? (value = typeof _ === "function" ? _ : constant(_), histogram) : value;
+	  };
+
+	  histogram.domain = function(_) {
+	    return arguments.length ? (domain = typeof _ === "function" ? _ : constant([_[0], _[1]]), histogram) : domain;
+	  };
+
+	  histogram.thresholds = function(_) {
+	    return arguments.length ? (threshold = typeof _ === "function" ? _ : Array.isArray(_) ? constant(slice.call(_)) : constant(_), histogram) : threshold;
+	  };
+
+	  return histogram;
+	};
+
+	var quantile = function(array, p, f) {
+	  if (f == null) f = number;
+	  if (!(n = array.length)) return;
+	  if ((p = +p) <= 0 || n < 2) return +f(array[0], 0, array);
+	  if (p >= 1) return +f(array[n - 1], n - 1, array);
+	  var n,
+	      h = (n - 1) * p,
+	      i = Math.floor(h),
+	      a = +f(array[i], i, array),
+	      b = +f(array[i + 1], i + 1, array);
+	  return a + (b - a) * (h - i);
+	};
+
+	var freedmanDiaconis = function(values, min, max) {
+	  values = map.call(values, number).sort(ascending);
+	  return Math.ceil((max - min) / (2 * (quantile(values, 0.75) - quantile(values, 0.25)) * Math.pow(values.length, -1 / 3)));
+	};
+
+	var scott = function(values, min, max) {
+	  return Math.ceil((max - min) / (3.5 * deviation(values) * Math.pow(values.length, -1 / 3)));
+	};
+
+	var max = function(array, f) {
+	  var i = -1,
+	      n = array.length,
+	      a,
+	      b;
+
+	  if (f == null) {
+	    while (++i < n) if ((b = array[i]) != null && b >= b) { a = b; break; }
+	    while (++i < n) if ((b = array[i]) != null && b > a) a = b;
+	  }
+
+	  else {
+	    while (++i < n) if ((b = f(array[i], i, array)) != null && b >= b) { a = b; break; }
+	    while (++i < n) if ((b = f(array[i], i, array)) != null && b > a) a = b;
+	  }
+
+	  return a;
+	};
+
+	var mean = function(array, f) {
+	  var s = 0,
+	      n = array.length,
+	      a,
+	      i = -1,
+	      j = n;
+
+	  if (f == null) {
+	    while (++i < n) if (!isNaN(a = number(array[i]))) s += a; else --j;
+	  }
+
+	  else {
+	    while (++i < n) if (!isNaN(a = number(f(array[i], i, array)))) s += a; else --j;
+	  }
+
+	  if (j) return s / j;
+	};
+
+	var median = function(array, f) {
+	  var numbers = [],
+	      n = array.length,
+	      a,
+	      i = -1;
+
+	  if (f == null) {
+	    while (++i < n) if (!isNaN(a = number(array[i]))) numbers.push(a);
+	  }
+
+	  else {
+	    while (++i < n) if (!isNaN(a = number(f(array[i], i, array)))) numbers.push(a);
+	  }
+
+	  return quantile(numbers.sort(ascending), 0.5);
+	};
+
+	var merge = function(arrays) {
+	  var n = arrays.length,
+	      m,
+	      i = -1,
+	      j = 0,
+	      merged,
+	      array;
+
+	  while (++i < n) j += arrays[i].length;
+	  merged = new Array(j);
+
+	  while (--n >= 0) {
+	    array = arrays[n];
+	    m = array.length;
+	    while (--m >= 0) {
+	      merged[--j] = array[m];
+	    }
+	  }
+
+	  return merged;
+	};
+
+	var min = function(array, f) {
+	  var i = -1,
+	      n = array.length,
+	      a,
+	      b;
+
+	  if (f == null) {
+	    while (++i < n) if ((b = array[i]) != null && b >= b) { a = b; break; }
+	    while (++i < n) if ((b = array[i]) != null && a > b) a = b;
+	  }
+
+	  else {
+	    while (++i < n) if ((b = f(array[i], i, array)) != null && b >= b) { a = b; break; }
+	    while (++i < n) if ((b = f(array[i], i, array)) != null && a > b) a = b;
+	  }
+
+	  return a;
+	};
+
+	var permute = function(array, indexes) {
+	  var i = indexes.length, permutes = new Array(i);
+	  while (i--) permutes[i] = array[indexes[i]];
+	  return permutes;
+	};
+
+	var scan = function(array, compare) {
+	  if (!(n = array.length)) return;
+	  var i = 0,
+	      n,
+	      j = 0,
+	      xi,
+	      xj = array[j];
+
+	  if (!compare) compare = ascending;
+
+	  while (++i < n) if (compare(xi = array[i], xj) < 0 || compare(xj, xj) !== 0) xj = xi, j = i;
+
+	  if (compare(xj, xj) === 0) return j;
+	};
+
+	var shuffle = function(array, i0, i1) {
+	  var m = (i1 == null ? array.length : i1) - (i0 = i0 == null ? 0 : +i0),
+	      t,
+	      i;
+
+	  while (m) {
+	    i = Math.random() * m-- | 0;
+	    t = array[m + i0];
+	    array[m + i0] = array[i + i0];
+	    array[i + i0] = t;
+	  }
+
+	  return array;
+	};
+
+	var sum = function(array, f) {
+	  var s = 0,
+	      n = array.length,
+	      a,
+	      i = -1;
+
+	  if (f == null) {
+	    while (++i < n) if (a = +array[i]) s += a; // Note: zero and null are equivalent.
+	  }
+
+	  else {
+	    while (++i < n) if (a = +f(array[i], i, array)) s += a;
+	  }
+
+	  return s;
+	};
+
+	var transpose = function(matrix) {
+	  if (!(n = matrix.length)) return [];
+	  for (var i = -1, m = min(matrix, length), transpose = new Array(m); ++i < m;) {
+	    for (var j = -1, n, row = transpose[i] = new Array(n); ++j < n;) {
+	      row[j] = matrix[j][i];
+	    }
+	  }
+	  return transpose;
+	};
+
+	function length(d) {
+	  return d.length;
+	}
+
+	var zip = function() {
+	  return transpose(arguments);
+	};
+
+	exports.bisect = bisectRight;
+	exports.bisectRight = bisectRight;
+	exports.bisectLeft = bisectLeft;
+	exports.ascending = ascending;
+	exports.bisector = bisector;
+	exports.cross = cross;
+	exports.descending = descending;
+	exports.deviation = deviation;
+	exports.extent = extent;
+	exports.histogram = histogram;
+	exports.thresholdFreedmanDiaconis = freedmanDiaconis;
+	exports.thresholdScott = scott;
+	exports.thresholdSturges = sturges;
+	exports.max = max;
+	exports.mean = mean;
+	exports.median = median;
+	exports.merge = merge;
+	exports.min = min;
+	exports.pairs = pairs;
+	exports.permute = permute;
+	exports.quantile = quantile;
+	exports.range = range;
+	exports.scan = scan;
+	exports.shuffle = shuffle;
+	exports.sum = sum;
+	exports.ticks = ticks;
+	exports.tickStep = tickStep;
+	exports.transpose = transpose;
+	exports.variance = variance;
+	exports.zip = zip;
+
+	Object.defineProperty(exports, '__esModule', { value: true });
+
+	})));
+
+
+/***/ },
+/* 7 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// https://d3js.org/d3-collection/ Version 1.0.2. Copyright 2016 Mike Bostock.
+	(function (global, factory) {
+	   true ? factory(exports) :
+	  typeof define === 'function' && define.amd ? define(['exports'], factory) :
+	  (factory((global.d3 = global.d3 || {})));
+	}(this, (function (exports) { 'use strict';
+
+	var prefix = "$";
+
+	function Map() {}
+
+	Map.prototype = map.prototype = {
+	  constructor: Map,
+	  has: function(key) {
+	    return (prefix + key) in this;
+	  },
+	  get: function(key) {
+	    return this[prefix + key];
+	  },
+	  set: function(key, value) {
+	    this[prefix + key] = value;
+	    return this;
+	  },
+	  remove: function(key) {
+	    var property = prefix + key;
+	    return property in this && delete this[property];
+	  },
+	  clear: function() {
+	    for (var property in this) if (property[0] === prefix) delete this[property];
+	  },
+	  keys: function() {
+	    var keys = [];
+	    for (var property in this) if (property[0] === prefix) keys.push(property.slice(1));
+	    return keys;
+	  },
+	  values: function() {
+	    var values = [];
+	    for (var property in this) if (property[0] === prefix) values.push(this[property]);
+	    return values;
+	  },
+	  entries: function() {
+	    var entries = [];
+	    for (var property in this) if (property[0] === prefix) entries.push({key: property.slice(1), value: this[property]});
+	    return entries;
+	  },
+	  size: function() {
+	    var size = 0;
+	    for (var property in this) if (property[0] === prefix) ++size;
+	    return size;
+	  },
+	  empty: function() {
+	    for (var property in this) if (property[0] === prefix) return false;
+	    return true;
+	  },
+	  each: function(f) {
+	    for (var property in this) if (property[0] === prefix) f(this[property], property.slice(1), this);
+	  }
+	};
+
+	function map(object, f) {
+	  var map = new Map;
+
+	  // Copy constructor.
+	  if (object instanceof Map) object.each(function(value, key) { map.set(key, value); });
+
+	  // Index array by numeric index or specified key function.
+	  else if (Array.isArray(object)) {
+	    var i = -1,
+	        n = object.length,
+	        o;
+
+	    if (f == null) while (++i < n) map.set(i, object[i]);
+	    else while (++i < n) map.set(f(o = object[i], i, object), o);
+	  }
+
+	  // Convert object to map.
+	  else if (object) for (var key in object) map.set(key, object[key]);
+
+	  return map;
+	}
+
+	var nest = function() {
+	  var keys = [],
+	      sortKeys = [],
+	      sortValues,
+	      rollup,
+	      nest;
+
+	  function apply(array, depth, createResult, setResult) {
+	    if (depth >= keys.length) return rollup != null
+	        ? rollup(array) : (sortValues != null
+	        ? array.sort(sortValues)
+	        : array);
+
+	    var i = -1,
+	        n = array.length,
+	        key = keys[depth++],
+	        keyValue,
+	        value,
+	        valuesByKey = map(),
+	        values,
+	        result = createResult();
+
+	    while (++i < n) {
+	      if (values = valuesByKey.get(keyValue = key(value = array[i]) + "")) {
+	        values.push(value);
+	      } else {
+	        valuesByKey.set(keyValue, [value]);
+	      }
+	    }
+
+	    valuesByKey.each(function(values, key) {
+	      setResult(result, key, apply(values, depth, createResult, setResult));
+	    });
+
+	    return result;
+	  }
+
+	  function entries(map$$1, depth) {
+	    if (++depth > keys.length) return map$$1;
+	    var array, sortKey = sortKeys[depth - 1];
+	    if (rollup != null && depth >= keys.length) array = map$$1.entries();
+	    else array = [], map$$1.each(function(v, k) { array.push({key: k, values: entries(v, depth)}); });
+	    return sortKey != null ? array.sort(function(a, b) { return sortKey(a.key, b.key); }) : array;
+	  }
+
+	  return nest = {
+	    object: function(array) { return apply(array, 0, createObject, setObject); },
+	    map: function(array) { return apply(array, 0, createMap, setMap); },
+	    entries: function(array) { return entries(apply(array, 0, createMap, setMap), 0); },
+	    key: function(d) { keys.push(d); return nest; },
+	    sortKeys: function(order) { sortKeys[keys.length - 1] = order; return nest; },
+	    sortValues: function(order) { sortValues = order; return nest; },
+	    rollup: function(f) { rollup = f; return nest; }
+	  };
+	};
+
+	function createObject() {
+	  return {};
+	}
+
+	function setObject(object, key, value) {
+	  object[key] = value;
+	}
+
+	function createMap() {
+	  return map();
+	}
+
+	function setMap(map$$1, key, value) {
+	  map$$1.set(key, value);
+	}
+
+	function Set() {}
+
+	var proto = map.prototype;
+
+	Set.prototype = set.prototype = {
+	  constructor: Set,
+	  has: proto.has,
+	  add: function(value) {
+	    value += "";
+	    this[prefix + value] = value;
+	    return this;
+	  },
+	  remove: proto.remove,
+	  clear: proto.clear,
+	  values: proto.keys,
+	  size: proto.size,
+	  empty: proto.empty,
+	  each: proto.each
+	};
+
+	function set(object, f) {
+	  var set = new Set;
+
+	  // Copy constructor.
+	  if (object instanceof Set) object.each(function(value) { set.add(value); });
+
+	  // Otherwise, assume it’s an array.
+	  else if (object) {
+	    var i = -1, n = object.length;
+	    if (f == null) while (++i < n) set.add(object[i]);
+	    else while (++i < n) set.add(f(object[i], i, object));
+	  }
+
+	  return set;
+	}
+
+	var keys = function(map) {
+	  var keys = [];
+	  for (var key in map) keys.push(key);
+	  return keys;
+	};
+
+	var values = function(map) {
+	  var values = [];
+	  for (var key in map) values.push(map[key]);
+	  return values;
+	};
+
+	var entries = function(map) {
+	  var entries = [];
+	  for (var key in map) entries.push({key: key, value: map[key]});
+	  return entries;
+	};
+
+	exports.nest = nest;
+	exports.set = set;
+	exports.map = map;
+	exports.keys = keys;
+	exports.values = values;
+	exports.entries = entries;
+
+	Object.defineProperty(exports, '__esModule', { value: true });
+
+	})));
+
+
+/***/ },
+/* 8 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// https://d3js.org/d3-interpolate/ Version 1.1.3. Copyright 2017 Mike Bostock.
+	(function (global, factory) {
+	   true ? factory(exports, __webpack_require__(9)) :
+	  typeof define === 'function' && define.amd ? define(['exports', 'd3-color'], factory) :
+	  (factory((global.d3 = global.d3 || {}),global.d3));
+	}(this, (function (exports,d3Color) { 'use strict';
+
+	function basis(t1, v0, v1, v2, v3) {
+	  var t2 = t1 * t1, t3 = t2 * t1;
+	  return ((1 - 3 * t1 + 3 * t2 - t3) * v0
+	      + (4 - 6 * t2 + 3 * t3) * v1
+	      + (1 + 3 * t1 + 3 * t2 - 3 * t3) * v2
+	      + t3 * v3) / 6;
+	}
+
+	var basis$1 = function(values) {
+	  var n = values.length - 1;
+	  return function(t) {
+	    var i = t <= 0 ? (t = 0) : t >= 1 ? (t = 1, n - 1) : Math.floor(t * n),
+	        v1 = values[i],
+	        v2 = values[i + 1],
+	        v0 = i > 0 ? values[i - 1] : 2 * v1 - v2,
+	        v3 = i < n - 1 ? values[i + 2] : 2 * v2 - v1;
+	    return basis((t - i / n) * n, v0, v1, v2, v3);
+	  };
+	};
+
+	var basisClosed = function(values) {
+	  var n = values.length;
+	  return function(t) {
+	    var i = Math.floor(((t %= 1) < 0 ? ++t : t) * n),
+	        v0 = values[(i + n - 1) % n],
+	        v1 = values[i % n],
+	        v2 = values[(i + 1) % n],
+	        v3 = values[(i + 2) % n];
+	    return basis((t - i / n) * n, v0, v1, v2, v3);
+	  };
+	};
+
+	var constant = function(x) {
+	  return function() {
+	    return x;
+	  };
+	};
+
+	function linear(a, d) {
+	  return function(t) {
+	    return a + t * d;
+	  };
+	}
+
+	function exponential(a, b, y) {
+	  return a = Math.pow(a, y), b = Math.pow(b, y) - a, y = 1 / y, function(t) {
+	    return Math.pow(a + t * b, y);
+	  };
+	}
+
+	function hue(a, b) {
+	  var d = b - a;
+	  return d ? linear(a, d > 180 || d < -180 ? d - 360 * Math.round(d / 360) : d) : constant(isNaN(a) ? b : a);
+	}
+
+	function gamma(y) {
+	  return (y = +y) === 1 ? nogamma : function(a, b) {
+	    return b - a ? exponential(a, b, y) : constant(isNaN(a) ? b : a);
+	  };
+	}
+
+	function nogamma(a, b) {
+	  var d = b - a;
+	  return d ? linear(a, d) : constant(isNaN(a) ? b : a);
+	}
+
+	var rgb$1 = ((function rgbGamma(y) {
+	  var color$$1 = gamma(y);
+
+	  function rgb$$1(start, end) {
+	    var r = color$$1((start = d3Color.rgb(start)).r, (end = d3Color.rgb(end)).r),
+	        g = color$$1(start.g, end.g),
+	        b = color$$1(start.b, end.b),
+	        opacity = nogamma(start.opacity, end.opacity);
+	    return function(t) {
+	      start.r = r(t);
+	      start.g = g(t);
+	      start.b = b(t);
+	      start.opacity = opacity(t);
+	      return start + "";
+	    };
+	  }
+
+	  rgb$$1.gamma = rgbGamma;
+
+	  return rgb$$1;
+	}))(1);
+
+	function rgbSpline(spline) {
+	  return function(colors) {
+	    var n = colors.length,
+	        r = new Array(n),
+	        g = new Array(n),
+	        b = new Array(n),
+	        i, color$$1;
+	    for (i = 0; i < n; ++i) {
+	      color$$1 = d3Color.rgb(colors[i]);
+	      r[i] = color$$1.r || 0;
+	      g[i] = color$$1.g || 0;
+	      b[i] = color$$1.b || 0;
+	    }
+	    r = spline(r);
+	    g = spline(g);
+	    b = spline(b);
+	    color$$1.opacity = 1;
+	    return function(t) {
+	      color$$1.r = r(t);
+	      color$$1.g = g(t);
+	      color$$1.b = b(t);
+	      return color$$1 + "";
+	    };
+	  };
+	}
+
+	var rgbBasis = rgbSpline(basis$1);
+	var rgbBasisClosed = rgbSpline(basisClosed);
+
+	var array = function(a, b) {
+	  var nb = b ? b.length : 0,
+	      na = a ? Math.min(nb, a.length) : 0,
+	      x = new Array(nb),
+	      c = new Array(nb),
+	      i;
+
+	  for (i = 0; i < na; ++i) x[i] = value(a[i], b[i]);
+	  for (; i < nb; ++i) c[i] = b[i];
+
+	  return function(t) {
+	    for (i = 0; i < na; ++i) c[i] = x[i](t);
+	    return c;
+	  };
+	};
+
+	var date = function(a, b) {
+	  var d = new Date;
+	  return a = +a, b -= a, function(t) {
+	    return d.setTime(a + b * t), d;
+	  };
+	};
+
+	var number = function(a, b) {
+	  return a = +a, b -= a, function(t) {
+	    return a + b * t;
+	  };
+	};
+
+	var object = function(a, b) {
+	  var i = {},
+	      c = {},
+	      k;
+
+	  if (a === null || typeof a !== "object") a = {};
+	  if (b === null || typeof b !== "object") b = {};
+
+	  for (k in b) {
+	    if (k in a) {
+	      i[k] = value(a[k], b[k]);
+	    } else {
+	      c[k] = b[k];
+	    }
+	  }
+
+	  return function(t) {
+	    for (k in i) c[k] = i[k](t);
+	    return c;
+	  };
+	};
+
+	var reA = /[-+]?(?:\d+\.?\d*|\.?\d+)(?:[eE][-+]?\d+)?/g;
+	var reB = new RegExp(reA.source, "g");
+
+	function zero(b) {
+	  return function() {
+	    return b;
+	  };
+	}
+
+	function one(b) {
+	  return function(t) {
+	    return b(t) + "";
+	  };
+	}
+
+	var string = function(a, b) {
+	  var bi = reA.lastIndex = reB.lastIndex = 0, // scan index for next number in b
+	      am, // current match in a
+	      bm, // current match in b
+	      bs, // string preceding current number in b, if any
+	      i = -1, // index in s
+	      s = [], // string constants and placeholders
+	      q = []; // number interpolators
+
+	  // Coerce inputs to strings.
+	  a = a + "", b = b + "";
+
+	  // Interpolate pairs of numbers in a & b.
+	  while ((am = reA.exec(a))
+	      && (bm = reB.exec(b))) {
+	    if ((bs = bm.index) > bi) { // a string precedes the next number in b
+	      bs = b.slice(bi, bs);
+	      if (s[i]) s[i] += bs; // coalesce with previous string
+	      else s[++i] = bs;
+	    }
+	    if ((am = am[0]) === (bm = bm[0])) { // numbers in a & b match
+	      if (s[i]) s[i] += bm; // coalesce with previous string
+	      else s[++i] = bm;
+	    } else { // interpolate non-matching numbers
+	      s[++i] = null;
+	      q.push({i: i, x: number(am, bm)});
+	    }
+	    bi = reB.lastIndex;
+	  }
+
+	  // Add remains of b.
+	  if (bi < b.length) {
+	    bs = b.slice(bi);
+	    if (s[i]) s[i] += bs; // coalesce with previous string
+	    else s[++i] = bs;
+	  }
+
+	  // Special optimization for only a single match.
+	  // Otherwise, interpolate each of the numbers and rejoin the string.
+	  return s.length < 2 ? (q[0]
+	      ? one(q[0].x)
+	      : zero(b))
+	      : (b = q.length, function(t) {
+	          for (var i = 0, o; i < b; ++i) s[(o = q[i]).i] = o.x(t);
+	          return s.join("");
+	        });
+	};
+
+	var value = function(a, b) {
+	  var t = typeof b, c;
+	  return b == null || t === "boolean" ? constant(b)
+	      : (t === "number" ? number
+	      : t === "string" ? ((c = d3Color.color(b)) ? (b = c, rgb$1) : string)
+	      : b instanceof d3Color.color ? rgb$1
+	      : b instanceof Date ? date
+	      : Array.isArray(b) ? array
+	      : isNaN(b) ? object
+	      : number)(a, b);
+	};
+
+	var round = function(a, b) {
+	  return a = +a, b -= a, function(t) {
+	    return Math.round(a + b * t);
+	  };
+	};
+
+	var degrees = 180 / Math.PI;
+
+	var identity = {
+	  translateX: 0,
+	  translateY: 0,
+	  rotate: 0,
+	  skewX: 0,
+	  scaleX: 1,
+	  scaleY: 1
+	};
+
+	var decompose = function(a, b, c, d, e, f) {
+	  var scaleX, scaleY, skewX;
+	  if (scaleX = Math.sqrt(a * a + b * b)) a /= scaleX, b /= scaleX;
+	  if (skewX = a * c + b * d) c -= a * skewX, d -= b * skewX;
+	  if (scaleY = Math.sqrt(c * c + d * d)) c /= scaleY, d /= scaleY, skewX /= scaleY;
+	  if (a * d < b * c) a = -a, b = -b, skewX = -skewX, scaleX = -scaleX;
+	  return {
+	    translateX: e,
+	    translateY: f,
+	    rotate: Math.atan2(b, a) * degrees,
+	    skewX: Math.atan(skewX) * degrees,
+	    scaleX: scaleX,
+	    scaleY: scaleY
+	  };
+	};
+
+	var cssNode;
+	var cssRoot;
+	var cssView;
+	var svgNode;
+
+	function parseCss(value) {
+	  if (value === "none") return identity;
+	  if (!cssNode) cssNode = document.createElement("DIV"), cssRoot = document.documentElement, cssView = document.defaultView;
+	  cssNode.style.transform = value;
+	  value = cssView.getComputedStyle(cssRoot.appendChild(cssNode), null).getPropertyValue("transform");
+	  cssRoot.removeChild(cssNode);
+	  value = value.slice(7, -1).split(",");
+	  return decompose(+value[0], +value[1], +value[2], +value[3], +value[4], +value[5]);
+	}
+
+	function parseSvg(value) {
+	  if (value == null) return identity;
+	  if (!svgNode) svgNode = document.createElementNS("http://www.w3.org/2000/svg", "g");
+	  svgNode.setAttribute("transform", value);
+	  if (!(value = svgNode.transform.baseVal.consolidate())) return identity;
+	  value = value.matrix;
+	  return decompose(value.a, value.b, value.c, value.d, value.e, value.f);
+	}
+
+	function interpolateTransform(parse, pxComma, pxParen, degParen) {
+
+	  function pop(s) {
+	    return s.length ? s.pop() + " " : "";
+	  }
+
+	  function translate(xa, ya, xb, yb, s, q) {
+	    if (xa !== xb || ya !== yb) {
+	      var i = s.push("translate(", null, pxComma, null, pxParen);
+	      q.push({i: i - 4, x: number(xa, xb)}, {i: i - 2, x: number(ya, yb)});
+	    } else if (xb || yb) {
+	      s.push("translate(" + xb + pxComma + yb + pxParen);
+	    }
+	  }
+
+	  function rotate(a, b, s, q) {
+	    if (a !== b) {
+	      if (a - b > 180) b += 360; else if (b - a > 180) a += 360; // shortest path
+	      q.push({i: s.push(pop(s) + "rotate(", null, degParen) - 2, x: number(a, b)});
+	    } else if (b) {
+	      s.push(pop(s) + "rotate(" + b + degParen);
+	    }
+	  }
+
+	  function skewX(a, b, s, q) {
+	    if (a !== b) {
+	      q.push({i: s.push(pop(s) + "skewX(", null, degParen) - 2, x: number(a, b)});
+	    } else if (b) {
+	      s.push(pop(s) + "skewX(" + b + degParen);
+	    }
+	  }
+
+	  function scale(xa, ya, xb, yb, s, q) {
+	    if (xa !== xb || ya !== yb) {
+	      var i = s.push(pop(s) + "scale(", null, ",", null, ")");
+	      q.push({i: i - 4, x: number(xa, xb)}, {i: i - 2, x: number(ya, yb)});
+	    } else if (xb !== 1 || yb !== 1) {
+	      s.push(pop(s) + "scale(" + xb + "," + yb + ")");
+	    }
+	  }
+
+	  return function(a, b) {
+	    var s = [], // string constants and placeholders
+	        q = []; // number interpolators
+	    a = parse(a), b = parse(b);
+	    translate(a.translateX, a.translateY, b.translateX, b.translateY, s, q);
+	    rotate(a.rotate, b.rotate, s, q);
+	    skewX(a.skewX, b.skewX, s, q);
+	    scale(a.scaleX, a.scaleY, b.scaleX, b.scaleY, s, q);
+	    a = b = null; // gc
+	    return function(t) {
+	      var i = -1, n = q.length, o;
+	      while (++i < n) s[(o = q[i]).i] = o.x(t);
+	      return s.join("");
+	    };
+	  };
+	}
+
+	var interpolateTransformCss = interpolateTransform(parseCss, "px, ", "px)", "deg)");
+	var interpolateTransformSvg = interpolateTransform(parseSvg, ", ", ")", ")");
+
+	var rho = Math.SQRT2;
+	var rho2 = 2;
+	var rho4 = 4;
+	var epsilon2 = 1e-12;
+
+	function cosh(x) {
+	  return ((x = Math.exp(x)) + 1 / x) / 2;
+	}
+
+	function sinh(x) {
+	  return ((x = Math.exp(x)) - 1 / x) / 2;
+	}
+
+	function tanh(x) {
+	  return ((x = Math.exp(2 * x)) - 1) / (x + 1);
+	}
+
+	// p0 = [ux0, uy0, w0]
+	// p1 = [ux1, uy1, w1]
+	var zoom = function(p0, p1) {
+	  var ux0 = p0[0], uy0 = p0[1], w0 = p0[2],
+	      ux1 = p1[0], uy1 = p1[1], w1 = p1[2],
+	      dx = ux1 - ux0,
+	      dy = uy1 - uy0,
+	      d2 = dx * dx + dy * dy,
+	      i,
+	      S;
+
+	  // Special case for u0 ≅ u1.
+	  if (d2 < epsilon2) {
+	    S = Math.log(w1 / w0) / rho;
+	    i = function(t) {
+	      return [
+	        ux0 + t * dx,
+	        uy0 + t * dy,
+	        w0 * Math.exp(rho * t * S)
+	      ];
+	    };
+	  }
+
+	  // General case.
+	  else {
+	    var d1 = Math.sqrt(d2),
+	        b0 = (w1 * w1 - w0 * w0 + rho4 * d2) / (2 * w0 * rho2 * d1),
+	        b1 = (w1 * w1 - w0 * w0 - rho4 * d2) / (2 * w1 * rho2 * d1),
+	        r0 = Math.log(Math.sqrt(b0 * b0 + 1) - b0),
+	        r1 = Math.log(Math.sqrt(b1 * b1 + 1) - b1);
+	    S = (r1 - r0) / rho;
+	    i = function(t) {
+	      var s = t * S,
+	          coshr0 = cosh(r0),
+	          u = w0 / (rho2 * d1) * (coshr0 * tanh(rho * s + r0) - sinh(r0));
+	      return [
+	        ux0 + u * dx,
+	        uy0 + u * dy,
+	        w0 * coshr0 / cosh(rho * s + r0)
+	      ];
+	    };
+	  }
+
+	  i.duration = S * 1000;
+
+	  return i;
+	};
+
+	function hsl$1(hue$$1) {
+	  return function(start, end) {
+	    var h = hue$$1((start = d3Color.hsl(start)).h, (end = d3Color.hsl(end)).h),
+	        s = nogamma(start.s, end.s),
+	        l = nogamma(start.l, end.l),
+	        opacity = nogamma(start.opacity, end.opacity);
+	    return function(t) {
+	      start.h = h(t);
+	      start.s = s(t);
+	      start.l = l(t);
+	      start.opacity = opacity(t);
+	      return start + "";
+	    };
+	  }
+	}
+
+	var hsl$2 = hsl$1(hue);
+	var hslLong = hsl$1(nogamma);
+
+	function lab$1(start, end) {
+	  var l = nogamma((start = d3Color.lab(start)).l, (end = d3Color.lab(end)).l),
+	      a = nogamma(start.a, end.a),
+	      b = nogamma(start.b, end.b),
+	      opacity = nogamma(start.opacity, end.opacity);
+	  return function(t) {
+	    start.l = l(t);
+	    start.a = a(t);
+	    start.b = b(t);
+	    start.opacity = opacity(t);
+	    return start + "";
+	  };
+	}
+
+	function hcl$1(hue$$1) {
+	  return function(start, end) {
+	    var h = hue$$1((start = d3Color.hcl(start)).h, (end = d3Color.hcl(end)).h),
+	        c = nogamma(start.c, end.c),
+	        l = nogamma(start.l, end.l),
+	        opacity = nogamma(start.opacity, end.opacity);
+	    return function(t) {
+	      start.h = h(t);
+	      start.c = c(t);
+	      start.l = l(t);
+	      start.opacity = opacity(t);
+	      return start + "";
+	    };
+	  }
+	}
+
+	var hcl$2 = hcl$1(hue);
+	var hclLong = hcl$1(nogamma);
+
+	function cubehelix$1(hue$$1) {
+	  return (function cubehelixGamma(y) {
+	    y = +y;
+
+	    function cubehelix$$1(start, end) {
+	      var h = hue$$1((start = d3Color.cubehelix(start)).h, (end = d3Color.cubehelix(end)).h),
+	          s = nogamma(start.s, end.s),
+	          l = nogamma(start.l, end.l),
+	          opacity = nogamma(start.opacity, end.opacity);
+	      return function(t) {
+	        start.h = h(t);
+	        start.s = s(t);
+	        start.l = l(Math.pow(t, y));
+	        start.opacity = opacity(t);
+	        return start + "";
+	      };
+	    }
+
+	    cubehelix$$1.gamma = cubehelixGamma;
+
+	    return cubehelix$$1;
+	  })(1);
+	}
+
+	var cubehelix$2 = cubehelix$1(hue);
+	var cubehelixLong = cubehelix$1(nogamma);
+
+	var quantize = function(interpolator, n) {
+	  var samples = new Array(n);
+	  for (var i = 0; i < n; ++i) samples[i] = interpolator(i / (n - 1));
+	  return samples;
+	};
+
+	exports.interpolate = value;
+	exports.interpolateArray = array;
+	exports.interpolateBasis = basis$1;
+	exports.interpolateBasisClosed = basisClosed;
+	exports.interpolateDate = date;
+	exports.interpolateNumber = number;
+	exports.interpolateObject = object;
+	exports.interpolateRound = round;
+	exports.interpolateString = string;
+	exports.interpolateTransformCss = interpolateTransformCss;
+	exports.interpolateTransformSvg = interpolateTransformSvg;
+	exports.interpolateZoom = zoom;
+	exports.interpolateRgb = rgb$1;
+	exports.interpolateRgbBasis = rgbBasis;
+	exports.interpolateRgbBasisClosed = rgbBasisClosed;
+	exports.interpolateHsl = hsl$2;
+	exports.interpolateHslLong = hslLong;
+	exports.interpolateLab = lab$1;
+	exports.interpolateHcl = hcl$2;
+	exports.interpolateHclLong = hclLong;
+	exports.interpolateCubehelix = cubehelix$2;
+	exports.interpolateCubehelixLong = cubehelixLong;
+	exports.quantize = quantize;
+
+	Object.defineProperty(exports, '__esModule', { value: true });
+
+	})));
+
+
+/***/ },
+/* 9 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// https://d3js.org/d3-color/ Version 1.0.2. Copyright 2016 Mike Bostock.
+	(function (global, factory) {
+	   true ? factory(exports) :
+	  typeof define === 'function' && define.amd ? define(['exports'], factory) :
+	  (factory((global.d3 = global.d3 || {})));
+	}(this, (function (exports) { 'use strict';
+
+	var define = function(constructor, factory, prototype) {
+	  constructor.prototype = factory.prototype = prototype;
+	  prototype.constructor = constructor;
+	};
+
+	function extend(parent, definition) {
+	  var prototype = Object.create(parent.prototype);
+	  for (var key in definition) prototype[key] = definition[key];
+	  return prototype;
+	}
+
+	function Color() {}
+
+	var darker = 0.7;
+	var brighter = 1 / darker;
+
+	var reI = "\\s*([+-]?\\d+)\\s*";
+	var reN = "\\s*([+-]?\\d*\\.?\\d+(?:[eE][+-]?\\d+)?)\\s*";
+	var reP = "\\s*([+-]?\\d*\\.?\\d+(?:[eE][+-]?\\d+)?)%\\s*";
+	var reHex3 = /^#([0-9a-f]{3})$/;
+	var reHex6 = /^#([0-9a-f]{6})$/;
+	var reRgbInteger = new RegExp("^rgb\\(" + [reI, reI, reI] + "\\)$");
+	var reRgbPercent = new RegExp("^rgb\\(" + [reP, reP, reP] + "\\)$");
+	var reRgbaInteger = new RegExp("^rgba\\(" + [reI, reI, reI, reN] + "\\)$");
+	var reRgbaPercent = new RegExp("^rgba\\(" + [reP, reP, reP, reN] + "\\)$");
+	var reHslPercent = new RegExp("^hsl\\(" + [reN, reP, reP] + "\\)$");
+	var reHslaPercent = new RegExp("^hsla\\(" + [reN, reP, reP, reN] + "\\)$");
+
+	var named = {
+	  aliceblue: 0xf0f8ff,
+	  antiquewhite: 0xfaebd7,
+	  aqua: 0x00ffff,
+	  aquamarine: 0x7fffd4,
+	  azure: 0xf0ffff,
+	  beige: 0xf5f5dc,
+	  bisque: 0xffe4c4,
+	  black: 0x000000,
+	  blanchedalmond: 0xffebcd,
+	  blue: 0x0000ff,
+	  blueviolet: 0x8a2be2,
+	  brown: 0xa52a2a,
+	  burlywood: 0xdeb887,
+	  cadetblue: 0x5f9ea0,
+	  chartreuse: 0x7fff00,
+	  chocolate: 0xd2691e,
+	  coral: 0xff7f50,
+	  cornflowerblue: 0x6495ed,
+	  cornsilk: 0xfff8dc,
+	  crimson: 0xdc143c,
+	  cyan: 0x00ffff,
+	  darkblue: 0x00008b,
+	  darkcyan: 0x008b8b,
+	  darkgoldenrod: 0xb8860b,
+	  darkgray: 0xa9a9a9,
+	  darkgreen: 0x006400,
+	  darkgrey: 0xa9a9a9,
+	  darkkhaki: 0xbdb76b,
+	  darkmagenta: 0x8b008b,
+	  darkolivegreen: 0x556b2f,
+	  darkorange: 0xff8c00,
+	  darkorchid: 0x9932cc,
+	  darkred: 0x8b0000,
+	  darksalmon: 0xe9967a,
+	  darkseagreen: 0x8fbc8f,
+	  darkslateblue: 0x483d8b,
+	  darkslategray: 0x2f4f4f,
+	  darkslategrey: 0x2f4f4f,
+	  darkturquoise: 0x00ced1,
+	  darkviolet: 0x9400d3,
+	  deeppink: 0xff1493,
+	  deepskyblue: 0x00bfff,
+	  dimgray: 0x696969,
+	  dimgrey: 0x696969,
+	  dodgerblue: 0x1e90ff,
+	  firebrick: 0xb22222,
+	  floralwhite: 0xfffaf0,
+	  forestgreen: 0x228b22,
+	  fuchsia: 0xff00ff,
+	  gainsboro: 0xdcdcdc,
+	  ghostwhite: 0xf8f8ff,
+	  gold: 0xffd700,
+	  goldenrod: 0xdaa520,
+	  gray: 0x808080,
+	  green: 0x008000,
+	  greenyellow: 0xadff2f,
+	  grey: 0x808080,
+	  honeydew: 0xf0fff0,
+	  hotpink: 0xff69b4,
+	  indianred: 0xcd5c5c,
+	  indigo: 0x4b0082,
+	  ivory: 0xfffff0,
+	  khaki: 0xf0e68c,
+	  lavender: 0xe6e6fa,
+	  lavenderblush: 0xfff0f5,
+	  lawngreen: 0x7cfc00,
+	  lemonchiffon: 0xfffacd,
+	  lightblue: 0xadd8e6,
+	  lightcoral: 0xf08080,
+	  lightcyan: 0xe0ffff,
+	  lightgoldenrodyellow: 0xfafad2,
+	  lightgray: 0xd3d3d3,
+	  lightgreen: 0x90ee90,
+	  lightgrey: 0xd3d3d3,
+	  lightpink: 0xffb6c1,
+	  lightsalmon: 0xffa07a,
+	  lightseagreen: 0x20b2aa,
+	  lightskyblue: 0x87cefa,
+	  lightslategray: 0x778899,
+	  lightslategrey: 0x778899,
+	  lightsteelblue: 0xb0c4de,
+	  lightyellow: 0xffffe0,
+	  lime: 0x00ff00,
+	  limegreen: 0x32cd32,
+	  linen: 0xfaf0e6,
+	  magenta: 0xff00ff,
+	  maroon: 0x800000,
+	  mediumaquamarine: 0x66cdaa,
+	  mediumblue: 0x0000cd,
+	  mediumorchid: 0xba55d3,
+	  mediumpurple: 0x9370db,
+	  mediumseagreen: 0x3cb371,
+	  mediumslateblue: 0x7b68ee,
+	  mediumspringgreen: 0x00fa9a,
+	  mediumturquoise: 0x48d1cc,
+	  mediumvioletred: 0xc71585,
+	  midnightblue: 0x191970,
+	  mintcream: 0xf5fffa,
+	  mistyrose: 0xffe4e1,
+	  moccasin: 0xffe4b5,
+	  navajowhite: 0xffdead,
+	  navy: 0x000080,
+	  oldlace: 0xfdf5e6,
+	  olive: 0x808000,
+	  olivedrab: 0x6b8e23,
+	  orange: 0xffa500,
+	  orangered: 0xff4500,
+	  orchid: 0xda70d6,
+	  palegoldenrod: 0xeee8aa,
+	  palegreen: 0x98fb98,
+	  paleturquoise: 0xafeeee,
+	  palevioletred: 0xdb7093,
+	  papayawhip: 0xffefd5,
+	  peachpuff: 0xffdab9,
+	  peru: 0xcd853f,
+	  pink: 0xffc0cb,
+	  plum: 0xdda0dd,
+	  powderblue: 0xb0e0e6,
+	  purple: 0x800080,
+	  rebeccapurple: 0x663399,
+	  red: 0xff0000,
+	  rosybrown: 0xbc8f8f,
+	  royalblue: 0x4169e1,
+	  saddlebrown: 0x8b4513,
+	  salmon: 0xfa8072,
+	  sandybrown: 0xf4a460,
+	  seagreen: 0x2e8b57,
+	  seashell: 0xfff5ee,
+	  sienna: 0xa0522d,
+	  silver: 0xc0c0c0,
+	  skyblue: 0x87ceeb,
+	  slateblue: 0x6a5acd,
+	  slategray: 0x708090,
+	  slategrey: 0x708090,
+	  snow: 0xfffafa,
+	  springgreen: 0x00ff7f,
+	  steelblue: 0x4682b4,
+	  tan: 0xd2b48c,
+	  teal: 0x008080,
+	  thistle: 0xd8bfd8,
+	  tomato: 0xff6347,
+	  turquoise: 0x40e0d0,
+	  violet: 0xee82ee,
+	  wheat: 0xf5deb3,
+	  white: 0xffffff,
+	  whitesmoke: 0xf5f5f5,
+	  yellow: 0xffff00,
+	  yellowgreen: 0x9acd32
+	};
+
+	define(Color, color, {
+	  displayable: function() {
+	    return this.rgb().displayable();
+	  },
+	  toString: function() {
+	    return this.rgb() + "";
+	  }
+	});
+
+	function color(format) {
+	  var m;
+	  format = (format + "").trim().toLowerCase();
+	  return (m = reHex3.exec(format)) ? (m = parseInt(m[1], 16), new Rgb((m >> 8 & 0xf) | (m >> 4 & 0x0f0), (m >> 4 & 0xf) | (m & 0xf0), ((m & 0xf) << 4) | (m & 0xf), 1)) // #f00
+	      : (m = reHex6.exec(format)) ? rgbn(parseInt(m[1], 16)) // #ff0000
+	      : (m = reRgbInteger.exec(format)) ? new Rgb(m[1], m[2], m[3], 1) // rgb(255, 0, 0)
+	      : (m = reRgbPercent.exec(format)) ? new Rgb(m[1] * 255 / 100, m[2] * 255 / 100, m[3] * 255 / 100, 1) // rgb(100%, 0%, 0%)
+	      : (m = reRgbaInteger.exec(format)) ? rgba(m[1], m[2], m[3], m[4]) // rgba(255, 0, 0, 1)
+	      : (m = reRgbaPercent.exec(format)) ? rgba(m[1] * 255 / 100, m[2] * 255 / 100, m[3] * 255 / 100, m[4]) // rgb(100%, 0%, 0%, 1)
+	      : (m = reHslPercent.exec(format)) ? hsla(m[1], m[2] / 100, m[3] / 100, 1) // hsl(120, 50%, 50%)
+	      : (m = reHslaPercent.exec(format)) ? hsla(m[1], m[2] / 100, m[3] / 100, m[4]) // hsla(120, 50%, 50%, 1)
+	      : named.hasOwnProperty(format) ? rgbn(named[format])
+	      : format === "transparent" ? new Rgb(NaN, NaN, NaN, 0)
+	      : null;
+	}
+
+	function rgbn(n) {
+	  return new Rgb(n >> 16 & 0xff, n >> 8 & 0xff, n & 0xff, 1);
+	}
+
+	function rgba(r, g, b, a) {
+	  if (a <= 0) r = g = b = NaN;
+	  return new Rgb(r, g, b, a);
+	}
+
+	function rgbConvert(o) {
+	  if (!(o instanceof Color)) o = color(o);
+	  if (!o) return new Rgb;
+	  o = o.rgb();
+	  return new Rgb(o.r, o.g, o.b, o.opacity);
+	}
+
+	function rgb(r, g, b, opacity) {
+	  return arguments.length === 1 ? rgbConvert(r) : new Rgb(r, g, b, opacity == null ? 1 : opacity);
+	}
+
+	function Rgb(r, g, b, opacity) {
+	  this.r = +r;
+	  this.g = +g;
+	  this.b = +b;
+	  this.opacity = +opacity;
+	}
+
+	define(Rgb, rgb, extend(Color, {
+	  brighter: function(k) {
+	    k = k == null ? brighter : Math.pow(brighter, k);
+	    return new Rgb(this.r * k, this.g * k, this.b * k, this.opacity);
+	  },
+	  darker: function(k) {
+	    k = k == null ? darker : Math.pow(darker, k);
+	    return new Rgb(this.r * k, this.g * k, this.b * k, this.opacity);
+	  },
+	  rgb: function() {
+	    return this;
+	  },
+	  displayable: function() {
+	    return (0 <= this.r && this.r <= 255)
+	        && (0 <= this.g && this.g <= 255)
+	        && (0 <= this.b && this.b <= 255)
+	        && (0 <= this.opacity && this.opacity <= 1);
+	  },
+	  toString: function() {
+	    var a = this.opacity; a = isNaN(a) ? 1 : Math.max(0, Math.min(1, a));
+	    return (a === 1 ? "rgb(" : "rgba(")
+	        + Math.max(0, Math.min(255, Math.round(this.r) || 0)) + ", "
+	        + Math.max(0, Math.min(255, Math.round(this.g) || 0)) + ", "
+	        + Math.max(0, Math.min(255, Math.round(this.b) || 0))
+	        + (a === 1 ? ")" : ", " + a + ")");
+	  }
+	}));
+
+	function hsla(h, s, l, a) {
+	  if (a <= 0) h = s = l = NaN;
+	  else if (l <= 0 || l >= 1) h = s = NaN;
+	  else if (s <= 0) h = NaN;
+	  return new Hsl(h, s, l, a);
+	}
+
+	function hslConvert(o) {
+	  if (o instanceof Hsl) return new Hsl(o.h, o.s, o.l, o.opacity);
+	  if (!(o instanceof Color)) o = color(o);
+	  if (!o) return new Hsl;
+	  if (o instanceof Hsl) return o;
+	  o = o.rgb();
+	  var r = o.r / 255,
+	      g = o.g / 255,
+	      b = o.b / 255,
+	      min = Math.min(r, g, b),
+	      max = Math.max(r, g, b),
+	      h = NaN,
+	      s = max - min,
+	      l = (max + min) / 2;
+	  if (s) {
+	    if (r === max) h = (g - b) / s + (g < b) * 6;
+	    else if (g === max) h = (b - r) / s + 2;
+	    else h = (r - g) / s + 4;
+	    s /= l < 0.5 ? max + min : 2 - max - min;
+	    h *= 60;
+	  } else {
+	    s = l > 0 && l < 1 ? 0 : h;
+	  }
+	  return new Hsl(h, s, l, o.opacity);
+	}
+
+	function hsl(h, s, l, opacity) {
+	  return arguments.length === 1 ? hslConvert(h) : new Hsl(h, s, l, opacity == null ? 1 : opacity);
+	}
+
+	function Hsl(h, s, l, opacity) {
+	  this.h = +h;
+	  this.s = +s;
+	  this.l = +l;
+	  this.opacity = +opacity;
+	}
+
+	define(Hsl, hsl, extend(Color, {
+	  brighter: function(k) {
+	    k = k == null ? brighter : Math.pow(brighter, k);
+	    return new Hsl(this.h, this.s, this.l * k, this.opacity);
+	  },
+	  darker: function(k) {
+	    k = k == null ? darker : Math.pow(darker, k);
+	    return new Hsl(this.h, this.s, this.l * k, this.opacity);
+	  },
+	  rgb: function() {
+	    var h = this.h % 360 + (this.h < 0) * 360,
+	        s = isNaN(h) || isNaN(this.s) ? 0 : this.s,
+	        l = this.l,
+	        m2 = l + (l < 0.5 ? l : 1 - l) * s,
+	        m1 = 2 * l - m2;
+	    return new Rgb(
+	      hsl2rgb(h >= 240 ? h - 240 : h + 120, m1, m2),
+	      hsl2rgb(h, m1, m2),
+	      hsl2rgb(h < 120 ? h + 240 : h - 120, m1, m2),
+	      this.opacity
+	    );
+	  },
+	  displayable: function() {
+	    return (0 <= this.s && this.s <= 1 || isNaN(this.s))
+	        && (0 <= this.l && this.l <= 1)
+	        && (0 <= this.opacity && this.opacity <= 1);
+	  }
+	}));
+
+	/* From FvD 13.37, CSS Color Module Level 3 */
+	function hsl2rgb(h, m1, m2) {
+	  return (h < 60 ? m1 + (m2 - m1) * h / 60
+	      : h < 180 ? m2
+	      : h < 240 ? m1 + (m2 - m1) * (240 - h) / 60
+	      : m1) * 255;
+	}
+
+	var deg2rad = Math.PI / 180;
+	var rad2deg = 180 / Math.PI;
+
+	var Kn = 18;
+	var Xn = 0.950470;
+	var Yn = 1;
+	var Zn = 1.088830;
+	var t0 = 4 / 29;
+	var t1 = 6 / 29;
+	var t2 = 3 * t1 * t1;
+	var t3 = t1 * t1 * t1;
+
+	function labConvert(o) {
+	  if (o instanceof Lab) return new Lab(o.l, o.a, o.b, o.opacity);
+	  if (o instanceof Hcl) {
+	    var h = o.h * deg2rad;
+	    return new Lab(o.l, Math.cos(h) * o.c, Math.sin(h) * o.c, o.opacity);
+	  }
+	  if (!(o instanceof Rgb)) o = rgbConvert(o);
+	  var b = rgb2xyz(o.r),
+	      a = rgb2xyz(o.g),
+	      l = rgb2xyz(o.b),
+	      x = xyz2lab((0.4124564 * b + 0.3575761 * a + 0.1804375 * l) / Xn),
+	      y = xyz2lab((0.2126729 * b + 0.7151522 * a + 0.0721750 * l) / Yn),
+	      z = xyz2lab((0.0193339 * b + 0.1191920 * a + 0.9503041 * l) / Zn);
+	  return new Lab(116 * y - 16, 500 * (x - y), 200 * (y - z), o.opacity);
+	}
+
+	function lab(l, a, b, opacity) {
+	  return arguments.length === 1 ? labConvert(l) : new Lab(l, a, b, opacity == null ? 1 : opacity);
+	}
+
+	function Lab(l, a, b, opacity) {
+	  this.l = +l;
+	  this.a = +a;
+	  this.b = +b;
+	  this.opacity = +opacity;
+	}
+
+	define(Lab, lab, extend(Color, {
+	  brighter: function(k) {
+	    return new Lab(this.l + Kn * (k == null ? 1 : k), this.a, this.b, this.opacity);
+	  },
+	  darker: function(k) {
+	    return new Lab(this.l - Kn * (k == null ? 1 : k), this.a, this.b, this.opacity);
+	  },
+	  rgb: function() {
+	    var y = (this.l + 16) / 116,
+	        x = isNaN(this.a) ? y : y + this.a / 500,
+	        z = isNaN(this.b) ? y : y - this.b / 200;
+	    y = Yn * lab2xyz(y);
+	    x = Xn * lab2xyz(x);
+	    z = Zn * lab2xyz(z);
+	    return new Rgb(
+	      xyz2rgb( 3.2404542 * x - 1.5371385 * y - 0.4985314 * z), // D65 -> sRGB
+	      xyz2rgb(-0.9692660 * x + 1.8760108 * y + 0.0415560 * z),
+	      xyz2rgb( 0.0556434 * x - 0.2040259 * y + 1.0572252 * z),
+	      this.opacity
+	    );
+	  }
+	}));
+
+	function xyz2lab(t) {
+	  return t > t3 ? Math.pow(t, 1 / 3) : t / t2 + t0;
+	}
+
+	function lab2xyz(t) {
+	  return t > t1 ? t * t * t : t2 * (t - t0);
+	}
+
+	function xyz2rgb(x) {
+	  return 255 * (x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 1 / 2.4) - 0.055);
+	}
+
+	function rgb2xyz(x) {
+	  return (x /= 255) <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+	}
+
+	function hclConvert(o) {
+	  if (o instanceof Hcl) return new Hcl(o.h, o.c, o.l, o.opacity);
+	  if (!(o instanceof Lab)) o = labConvert(o);
+	  var h = Math.atan2(o.b, o.a) * rad2deg;
+	  return new Hcl(h < 0 ? h + 360 : h, Math.sqrt(o.a * o.a + o.b * o.b), o.l, o.opacity);
+	}
+
+	function hcl(h, c, l, opacity) {
+	  return arguments.length === 1 ? hclConvert(h) : new Hcl(h, c, l, opacity == null ? 1 : opacity);
+	}
+
+	function Hcl(h, c, l, opacity) {
+	  this.h = +h;
+	  this.c = +c;
+	  this.l = +l;
+	  this.opacity = +opacity;
+	}
+
+	define(Hcl, hcl, extend(Color, {
+	  brighter: function(k) {
+	    return new Hcl(this.h, this.c, this.l + Kn * (k == null ? 1 : k), this.opacity);
+	  },
+	  darker: function(k) {
+	    return new Hcl(this.h, this.c, this.l - Kn * (k == null ? 1 : k), this.opacity);
+	  },
+	  rgb: function() {
+	    return labConvert(this).rgb();
+	  }
+	}));
+
+	var A = -0.14861;
+	var B = +1.78277;
+	var C = -0.29227;
+	var D = -0.90649;
+	var E = +1.97294;
+	var ED = E * D;
+	var EB = E * B;
+	var BC_DA = B * C - D * A;
+
+	function cubehelixConvert(o) {
+	  if (o instanceof Cubehelix) return new Cubehelix(o.h, o.s, o.l, o.opacity);
+	  if (!(o instanceof Rgb)) o = rgbConvert(o);
+	  var r = o.r / 255,
+	      g = o.g / 255,
+	      b = o.b / 255,
+	      l = (BC_DA * b + ED * r - EB * g) / (BC_DA + ED - EB),
+	      bl = b - l,
+	      k = (E * (g - l) - C * bl) / D,
+	      s = Math.sqrt(k * k + bl * bl) / (E * l * (1 - l)), // NaN if l=0 or l=1
+	      h = s ? Math.atan2(k, bl) * rad2deg - 120 : NaN;
+	  return new Cubehelix(h < 0 ? h + 360 : h, s, l, o.opacity);
+	}
+
+	function cubehelix(h, s, l, opacity) {
+	  return arguments.length === 1 ? cubehelixConvert(h) : new Cubehelix(h, s, l, opacity == null ? 1 : opacity);
+	}
+
+	function Cubehelix(h, s, l, opacity) {
+	  this.h = +h;
+	  this.s = +s;
+	  this.l = +l;
+	  this.opacity = +opacity;
+	}
+
+	define(Cubehelix, cubehelix, extend(Color, {
+	  brighter: function(k) {
+	    k = k == null ? brighter : Math.pow(brighter, k);
+	    return new Cubehelix(this.h, this.s, this.l * k, this.opacity);
+	  },
+	  darker: function(k) {
+	    k = k == null ? darker : Math.pow(darker, k);
+	    return new Cubehelix(this.h, this.s, this.l * k, this.opacity);
+	  },
+	  rgb: function() {
+	    var h = isNaN(this.h) ? 0 : (this.h + 120) * deg2rad,
+	        l = +this.l,
+	        a = isNaN(this.s) ? 0 : this.s * l * (1 - l),
+	        cosh = Math.cos(h),
+	        sinh = Math.sin(h);
+	    return new Rgb(
+	      255 * (l + a * (A * cosh + B * sinh)),
+	      255 * (l + a * (C * cosh + D * sinh)),
+	      255 * (l + a * (E * cosh)),
+	      this.opacity
+	    );
+	  }
+	}));
+
+	exports.color = color;
+	exports.rgb = rgb;
+	exports.hsl = hsl;
+	exports.lab = lab;
+	exports.hcl = hcl;
+	exports.cubehelix = cubehelix;
+
+	Object.defineProperty(exports, '__esModule', { value: true });
+
+	})));
+
+
+/***/ },
+/* 10 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// https://d3js.org/d3-format/ Version 1.0.2. Copyright 2016 Mike Bostock.
+	(function (global, factory) {
+	   true ? factory(exports) :
+	  typeof define === 'function' && define.amd ? define(['exports'], factory) :
+	  (factory((global.d3 = global.d3 || {})));
+	}(this, function (exports) { 'use strict';
+
+	  // Computes the decimal coefficient and exponent of the specified number x with
+	  // significant digits p, where x is positive and p is in [1, 21] or undefined.
+	  // For example, formatDecimal(1.23) returns ["123", 0].
+	  function formatDecimal(x, p) {
+	    if ((i = (x = p ? x.toExponential(p - 1) : x.toExponential()).indexOf("e")) < 0) return null; // NaN, ±Infinity
+	    var i, coefficient = x.slice(0, i);
+
+	    // The string returned by toExponential either has the form \d\.\d+e[-+]\d+
+	    // (e.g., 1.2e+3) or the form \de[-+]\d+ (e.g., 1e+3).
+	    return [
+	      coefficient.length > 1 ? coefficient[0] + coefficient.slice(2) : coefficient,
+	      +x.slice(i + 1)
+	    ];
+	  }
+
+	  function exponent(x) {
+	    return x = formatDecimal(Math.abs(x)), x ? x[1] : NaN;
+	  }
+
+	  function formatGroup(grouping, thousands) {
+	    return function(value, width) {
+	      var i = value.length,
+	          t = [],
+	          j = 0,
+	          g = grouping[0],
+	          length = 0;
+
+	      while (i > 0 && g > 0) {
+	        if (length + g + 1 > width) g = Math.max(1, width - length);
+	        t.push(value.substring(i -= g, i + g));
+	        if ((length += g + 1) > width) break;
+	        g = grouping[j = (j + 1) % grouping.length];
+	      }
+
+	      return t.reverse().join(thousands);
+	    };
+	  }
+
+	  function formatDefault(x, p) {
+	    x = x.toPrecision(p);
+
+	    out: for (var n = x.length, i = 1, i0 = -1, i1; i < n; ++i) {
+	      switch (x[i]) {
+	        case ".": i0 = i1 = i; break;
+	        case "0": if (i0 === 0) i0 = i; i1 = i; break;
+	        case "e": break out;
+	        default: if (i0 > 0) i0 = 0; break;
+	      }
+	    }
+
+	    return i0 > 0 ? x.slice(0, i0) + x.slice(i1 + 1) : x;
+	  }
+
+	  var prefixExponent;
+
+	  function formatPrefixAuto(x, p) {
+	    var d = formatDecimal(x, p);
+	    if (!d) return x + "";
+	    var coefficient = d[0],
+	        exponent = d[1],
+	        i = exponent - (prefixExponent = Math.max(-8, Math.min(8, Math.floor(exponent / 3))) * 3) + 1,
+	        n = coefficient.length;
+	    return i === n ? coefficient
+	        : i > n ? coefficient + new Array(i - n + 1).join("0")
+	        : i > 0 ? coefficient.slice(0, i) + "." + coefficient.slice(i)
+	        : "0." + new Array(1 - i).join("0") + formatDecimal(x, Math.max(0, p + i - 1))[0]; // less than 1y!
+	  }
+
+	  function formatRounded(x, p) {
+	    var d = formatDecimal(x, p);
+	    if (!d) return x + "";
+	    var coefficient = d[0],
+	        exponent = d[1];
+	    return exponent < 0 ? "0." + new Array(-exponent).join("0") + coefficient
+	        : coefficient.length > exponent + 1 ? coefficient.slice(0, exponent + 1) + "." + coefficient.slice(exponent + 1)
+	        : coefficient + new Array(exponent - coefficient.length + 2).join("0");
+	  }
+
+	  var formatTypes = {
+	    "": formatDefault,
+	    "%": function(x, p) { return (x * 100).toFixed(p); },
+	    "b": function(x) { return Math.round(x).toString(2); },
+	    "c": function(x) { return x + ""; },
+	    "d": function(x) { return Math.round(x).toString(10); },
+	    "e": function(x, p) { return x.toExponential(p); },
+	    "f": function(x, p) { return x.toFixed(p); },
+	    "g": function(x, p) { return x.toPrecision(p); },
+	    "o": function(x) { return Math.round(x).toString(8); },
+	    "p": function(x, p) { return formatRounded(x * 100, p); },
+	    "r": formatRounded,
+	    "s": formatPrefixAuto,
+	    "X": function(x) { return Math.round(x).toString(16).toUpperCase(); },
+	    "x": function(x) { return Math.round(x).toString(16); }
+	  };
+
+	  // [[fill]align][sign][symbol][0][width][,][.precision][type]
+	  var re = /^(?:(.)?([<>=^]))?([+\-\( ])?([$#])?(0)?(\d+)?(,)?(\.\d+)?([a-z%])?$/i;
+
+	  function formatSpecifier(specifier) {
+	    return new FormatSpecifier(specifier);
+	  }
+
+	  function FormatSpecifier(specifier) {
+	    if (!(match = re.exec(specifier))) throw new Error("invalid format: " + specifier);
+
+	    var match,
+	        fill = match[1] || " ",
+	        align = match[2] || ">",
+	        sign = match[3] || "-",
+	        symbol = match[4] || "",
+	        zero = !!match[5],
+	        width = match[6] && +match[6],
+	        comma = !!match[7],
+	        precision = match[8] && +match[8].slice(1),
+	        type = match[9] || "";
+
+	    // The "n" type is an alias for ",g".
+	    if (type === "n") comma = true, type = "g";
+
+	    // Map invalid types to the default format.
+	    else if (!formatTypes[type]) type = "";
+
+	    // If zero fill is specified, padding goes after sign and before digits.
+	    if (zero || (fill === "0" && align === "=")) zero = true, fill = "0", align = "=";
+
+	    this.fill = fill;
+	    this.align = align;
+	    this.sign = sign;
+	    this.symbol = symbol;
+	    this.zero = zero;
+	    this.width = width;
+	    this.comma = comma;
+	    this.precision = precision;
+	    this.type = type;
+	  }
+
+	  FormatSpecifier.prototype.toString = function() {
+	    return this.fill
+	        + this.align
+	        + this.sign
+	        + this.symbol
+	        + (this.zero ? "0" : "")
+	        + (this.width == null ? "" : Math.max(1, this.width | 0))
+	        + (this.comma ? "," : "")
+	        + (this.precision == null ? "" : "." + Math.max(0, this.precision | 0))
+	        + this.type;
+	  };
+
+	  var prefixes = ["y","z","a","f","p","n","µ","m","","k","M","G","T","P","E","Z","Y"];
+
+	  function identity(x) {
+	    return x;
+	  }
+
+	  function formatLocale(locale) {
+	    var group = locale.grouping && locale.thousands ? formatGroup(locale.grouping, locale.thousands) : identity,
+	        currency = locale.currency,
+	        decimal = locale.decimal;
+
+	    function newFormat(specifier) {
+	      specifier = formatSpecifier(specifier);
+
+	      var fill = specifier.fill,
+	          align = specifier.align,
+	          sign = specifier.sign,
+	          symbol = specifier.symbol,
+	          zero = specifier.zero,
+	          width = specifier.width,
+	          comma = specifier.comma,
+	          precision = specifier.precision,
+	          type = specifier.type;
+
+	      // Compute the prefix and suffix.
+	      // For SI-prefix, the suffix is lazily computed.
+	      var prefix = symbol === "$" ? currency[0] : symbol === "#" && /[boxX]/.test(type) ? "0" + type.toLowerCase() : "",
+	          suffix = symbol === "$" ? currency[1] : /[%p]/.test(type) ? "%" : "";
+
+	      // What format function should we use?
+	      // Is this an integer type?
+	      // Can this type generate exponential notation?
+	      var formatType = formatTypes[type],
+	          maybeSuffix = !type || /[defgprs%]/.test(type);
+
+	      // Set the default precision if not specified,
+	      // or clamp the specified precision to the supported range.
+	      // For significant precision, it must be in [1, 21].
+	      // For fixed precision, it must be in [0, 20].
+	      precision = precision == null ? (type ? 6 : 12)
+	          : /[gprs]/.test(type) ? Math.max(1, Math.min(21, precision))
+	          : Math.max(0, Math.min(20, precision));
+
+	      function format(value) {
+	        var valuePrefix = prefix,
+	            valueSuffix = suffix,
+	            i, n, c;
+
+	        if (type === "c") {
+	          valueSuffix = formatType(value) + valueSuffix;
+	          value = "";
+	        } else {
+	          value = +value;
+
+	          // Convert negative to positive, and compute the prefix.
+	          // Note that -0 is not less than 0, but 1 / -0 is!
+	          var valueNegative = (value < 0 || 1 / value < 0) && (value *= -1, true);
+
+	          // Perform the initial formatting.
+	          value = formatType(value, precision);
+
+	          // If the original value was negative, it may be rounded to zero during
+	          // formatting; treat this as (positive) zero.
+	          if (valueNegative) {
+	            i = -1, n = value.length;
+	            valueNegative = false;
+	            while (++i < n) {
+	              if (c = value.charCodeAt(i), (48 < c && c < 58)
+	                  || (type === "x" && 96 < c && c < 103)
+	                  || (type === "X" && 64 < c && c < 71)) {
+	                valueNegative = true;
+	                break;
+	              }
+	            }
+	          }
+
+	          // Compute the prefix and suffix.
+	          valuePrefix = (valueNegative ? (sign === "(" ? sign : "-") : sign === "-" || sign === "(" ? "" : sign) + valuePrefix;
+	          valueSuffix = valueSuffix + (type === "s" ? prefixes[8 + prefixExponent / 3] : "") + (valueNegative && sign === "(" ? ")" : "");
+
+	          // Break the formatted value into the integer “value” part that can be
+	          // grouped, and fractional or exponential “suffix” part that is not.
+	          if (maybeSuffix) {
+	            i = -1, n = value.length;
+	            while (++i < n) {
+	              if (c = value.charCodeAt(i), 48 > c || c > 57) {
+	                valueSuffix = (c === 46 ? decimal + value.slice(i + 1) : value.slice(i)) + valueSuffix;
+	                value = value.slice(0, i);
+	                break;
+	              }
+	            }
+	          }
+	        }
+
+	        // If the fill character is not "0", grouping is applied before padding.
+	        if (comma && !zero) value = group(value, Infinity);
+
+	        // Compute the padding.
+	        var length = valuePrefix.length + value.length + valueSuffix.length,
+	            padding = length < width ? new Array(width - length + 1).join(fill) : "";
+
+	        // If the fill character is "0", grouping is applied after padding.
+	        if (comma && zero) value = group(padding + value, padding.length ? width - valueSuffix.length : Infinity), padding = "";
+
+	        // Reconstruct the final output based on the desired alignment.
+	        switch (align) {
+	          case "<": return valuePrefix + value + valueSuffix + padding;
+	          case "=": return valuePrefix + padding + value + valueSuffix;
+	          case "^": return padding.slice(0, length = padding.length >> 1) + valuePrefix + value + valueSuffix + padding.slice(length);
+	        }
+	        return padding + valuePrefix + value + valueSuffix;
+	      }
+
+	      format.toString = function() {
+	        return specifier + "";
+	      };
+
+	      return format;
+	    }
+
+	    function formatPrefix(specifier, value) {
+	      var f = newFormat((specifier = formatSpecifier(specifier), specifier.type = "f", specifier)),
+	          e = Math.max(-8, Math.min(8, Math.floor(exponent(value) / 3))) * 3,
+	          k = Math.pow(10, -e),
+	          prefix = prefixes[8 + e / 3];
+	      return function(value) {
+	        return f(k * value) + prefix;
+	      };
+	    }
+
+	    return {
+	      format: newFormat,
+	      formatPrefix: formatPrefix
+	    };
+	  }
+
+	  var locale;
+	  defaultLocale({
+	    decimal: ".",
+	    thousands: ",",
+	    grouping: [3],
+	    currency: ["$", ""]
+	  });
+
+	  function defaultLocale(definition) {
+	    locale = formatLocale(definition);
+	    exports.format = locale.format;
+	    exports.formatPrefix = locale.formatPrefix;
+	    return locale;
+	  }
+
+	  function precisionFixed(step) {
+	    return Math.max(0, -exponent(Math.abs(step)));
+	  }
+
+	  function precisionPrefix(step, value) {
+	    return Math.max(0, Math.max(-8, Math.min(8, Math.floor(exponent(value) / 3))) * 3 - exponent(Math.abs(step)));
+	  }
+
+	  function precisionRound(step, max) {
+	    step = Math.abs(step), max = Math.abs(max) - step;
+	    return Math.max(0, exponent(max) - exponent(step)) + 1;
+	  }
+
+	  exports.formatDefaultLocale = defaultLocale;
+	  exports.formatLocale = formatLocale;
+	  exports.formatSpecifier = formatSpecifier;
+	  exports.precisionFixed = precisionFixed;
+	  exports.precisionPrefix = precisionPrefix;
+	  exports.precisionRound = precisionRound;
+
+	  Object.defineProperty(exports, '__esModule', { value: true });
+
+	}));
+
+/***/ },
+/* 11 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// https://d3js.org/d3-time/ Version 1.0.5. Copyright 2017 Mike Bostock.
+	(function (global, factory) {
+		 true ? factory(exports) :
+		typeof define === 'function' && define.amd ? define(['exports'], factory) :
+		(factory((global.d3 = global.d3 || {})));
+	}(this, (function (exports) { 'use strict';
+
+	var t0 = new Date;
+	var t1 = new Date;
+
+	function newInterval(floori, offseti, count, field) {
+
+	  function interval(date) {
+	    return floori(date = new Date(+date)), date;
+	  }
+
+	  interval.floor = interval;
+
+	  interval.ceil = function(date) {
+	    return floori(date = new Date(date - 1)), offseti(date, 1), floori(date), date;
+	  };
+
+	  interval.round = function(date) {
+	    var d0 = interval(date),
+	        d1 = interval.ceil(date);
+	    return date - d0 < d1 - date ? d0 : d1;
+	  };
+
+	  interval.offset = function(date, step) {
+	    return offseti(date = new Date(+date), step == null ? 1 : Math.floor(step)), date;
+	  };
+
+	  interval.range = function(start, stop, step) {
+	    var range = [];
+	    start = interval.ceil(start);
+	    step = step == null ? 1 : Math.floor(step);
+	    if (!(start < stop) || !(step > 0)) return range; // also handles Invalid Date
+	    do range.push(new Date(+start)); while (offseti(start, step), floori(start), start < stop)
+	    return range;
+	  };
+
+	  interval.filter = function(test) {
+	    return newInterval(function(date) {
+	      if (date >= date) while (floori(date), !test(date)) date.setTime(date - 1);
+	    }, function(date, step) {
+	      if (date >= date) while (--step >= 0) while (offseti(date, 1), !test(date)) {} // eslint-disable-line no-empty
+	    });
+	  };
+
+	  if (count) {
+	    interval.count = function(start, end) {
+	      t0.setTime(+start), t1.setTime(+end);
+	      floori(t0), floori(t1);
+	      return Math.floor(count(t0, t1));
+	    };
+
+	    interval.every = function(step) {
+	      step = Math.floor(step);
+	      return !isFinite(step) || !(step > 0) ? null
+	          : !(step > 1) ? interval
+	          : interval.filter(field
+	              ? function(d) { return field(d) % step === 0; }
+	              : function(d) { return interval.count(0, d) % step === 0; });
+	    };
+	  }
+
+	  return interval;
+	}
+
+	var millisecond = newInterval(function() {
+	  // noop
+	}, function(date, step) {
+	  date.setTime(+date + step);
+	}, function(start, end) {
+	  return end - start;
+	});
+
+	// An optimized implementation for this simple case.
+	millisecond.every = function(k) {
+	  k = Math.floor(k);
+	  if (!isFinite(k) || !(k > 0)) return null;
+	  if (!(k > 1)) return millisecond;
+	  return newInterval(function(date) {
+	    date.setTime(Math.floor(date / k) * k);
+	  }, function(date, step) {
+	    date.setTime(+date + step * k);
+	  }, function(start, end) {
+	    return (end - start) / k;
+	  });
+	};
+
+	var milliseconds = millisecond.range;
+
+	var durationSecond = 1e3;
+	var durationMinute = 6e4;
+	var durationHour = 36e5;
+	var durationDay = 864e5;
+	var durationWeek = 6048e5;
+
+	var second = newInterval(function(date) {
+	  date.setTime(Math.floor(date / durationSecond) * durationSecond);
+	}, function(date, step) {
+	  date.setTime(+date + step * durationSecond);
+	}, function(start, end) {
+	  return (end - start) / durationSecond;
+	}, function(date) {
+	  return date.getUTCSeconds();
+	});
+
+	var seconds = second.range;
+
+	var minute = newInterval(function(date) {
+	  date.setTime(Math.floor(date / durationMinute) * durationMinute);
+	}, function(date, step) {
+	  date.setTime(+date + step * durationMinute);
+	}, function(start, end) {
+	  return (end - start) / durationMinute;
+	}, function(date) {
+	  return date.getMinutes();
+	});
+
+	var minutes = minute.range;
+
+	var hour = newInterval(function(date) {
+	  var offset = date.getTimezoneOffset() * durationMinute % durationHour;
+	  if (offset < 0) offset += durationHour;
+	  date.setTime(Math.floor((+date - offset) / durationHour) * durationHour + offset);
+	}, function(date, step) {
+	  date.setTime(+date + step * durationHour);
+	}, function(start, end) {
+	  return (end - start) / durationHour;
+	}, function(date) {
+	  return date.getHours();
+	});
+
+	var hours = hour.range;
+
+	var day = newInterval(function(date) {
+	  date.setHours(0, 0, 0, 0);
+	}, function(date, step) {
+	  date.setDate(date.getDate() + step);
+	}, function(start, end) {
+	  return (end - start - (end.getTimezoneOffset() - start.getTimezoneOffset()) * durationMinute) / durationDay;
+	}, function(date) {
+	  return date.getDate() - 1;
+	});
+
+	var days = day.range;
+
+	function weekday(i) {
+	  return newInterval(function(date) {
+	    date.setDate(date.getDate() - (date.getDay() + 7 - i) % 7);
+	    date.setHours(0, 0, 0, 0);
+	  }, function(date, step) {
+	    date.setDate(date.getDate() + step * 7);
+	  }, function(start, end) {
+	    return (end - start - (end.getTimezoneOffset() - start.getTimezoneOffset()) * durationMinute) / durationWeek;
+	  });
+	}
+
+	var sunday = weekday(0);
+	var monday = weekday(1);
+	var tuesday = weekday(2);
+	var wednesday = weekday(3);
+	var thursday = weekday(4);
+	var friday = weekday(5);
+	var saturday = weekday(6);
+
+	var sundays = sunday.range;
+	var mondays = monday.range;
+	var tuesdays = tuesday.range;
+	var wednesdays = wednesday.range;
+	var thursdays = thursday.range;
+	var fridays = friday.range;
+	var saturdays = saturday.range;
+
+	var month = newInterval(function(date) {
+	  date.setDate(1);
+	  date.setHours(0, 0, 0, 0);
+	}, function(date, step) {
+	  date.setMonth(date.getMonth() + step);
+	}, function(start, end) {
+	  return end.getMonth() - start.getMonth() + (end.getFullYear() - start.getFullYear()) * 12;
+	}, function(date) {
+	  return date.getMonth();
+	});
+
+	var months = month.range;
+
+	var year = newInterval(function(date) {
+	  date.setMonth(0, 1);
+	  date.setHours(0, 0, 0, 0);
+	}, function(date, step) {
+	  date.setFullYear(date.getFullYear() + step);
+	}, function(start, end) {
+	  return end.getFullYear() - start.getFullYear();
+	}, function(date) {
+	  return date.getFullYear();
+	});
+
+	// An optimized implementation for this simple case.
+	year.every = function(k) {
+	  return !isFinite(k = Math.floor(k)) || !(k > 0) ? null : newInterval(function(date) {
+	    date.setFullYear(Math.floor(date.getFullYear() / k) * k);
+	    date.setMonth(0, 1);
+	    date.setHours(0, 0, 0, 0);
+	  }, function(date, step) {
+	    date.setFullYear(date.getFullYear() + step * k);
+	  });
+	};
+
+	var years = year.range;
+
+	var utcMinute = newInterval(function(date) {
+	  date.setUTCSeconds(0, 0);
+	}, function(date, step) {
+	  date.setTime(+date + step * durationMinute);
+	}, function(start, end) {
+	  return (end - start) / durationMinute;
+	}, function(date) {
+	  return date.getUTCMinutes();
+	});
+
+	var utcMinutes = utcMinute.range;
+
+	var utcHour = newInterval(function(date) {
+	  date.setUTCMinutes(0, 0, 0);
+	}, function(date, step) {
+	  date.setTime(+date + step * durationHour);
+	}, function(start, end) {
+	  return (end - start) / durationHour;
+	}, function(date) {
+	  return date.getUTCHours();
+	});
+
+	var utcHours = utcHour.range;
+
+	var utcDay = newInterval(function(date) {
+	  date.setUTCHours(0, 0, 0, 0);
+	}, function(date, step) {
+	  date.setUTCDate(date.getUTCDate() + step);
+	}, function(start, end) {
+	  return (end - start) / durationDay;
+	}, function(date) {
+	  return date.getUTCDate() - 1;
+	});
+
+	var utcDays = utcDay.range;
+
+	function utcWeekday(i) {
+	  return newInterval(function(date) {
+	    date.setUTCDate(date.getUTCDate() - (date.getUTCDay() + 7 - i) % 7);
+	    date.setUTCHours(0, 0, 0, 0);
+	  }, function(date, step) {
+	    date.setUTCDate(date.getUTCDate() + step * 7);
+	  }, function(start, end) {
+	    return (end - start) / durationWeek;
+	  });
+	}
+
+	var utcSunday = utcWeekday(0);
+	var utcMonday = utcWeekday(1);
+	var utcTuesday = utcWeekday(2);
+	var utcWednesday = utcWeekday(3);
+	var utcThursday = utcWeekday(4);
+	var utcFriday = utcWeekday(5);
+	var utcSaturday = utcWeekday(6);
+
+	var utcSundays = utcSunday.range;
+	var utcMondays = utcMonday.range;
+	var utcTuesdays = utcTuesday.range;
+	var utcWednesdays = utcWednesday.range;
+	var utcThursdays = utcThursday.range;
+	var utcFridays = utcFriday.range;
+	var utcSaturdays = utcSaturday.range;
+
+	var utcMonth = newInterval(function(date) {
+	  date.setUTCDate(1);
+	  date.setUTCHours(0, 0, 0, 0);
+	}, function(date, step) {
+	  date.setUTCMonth(date.getUTCMonth() + step);
+	}, function(start, end) {
+	  return end.getUTCMonth() - start.getUTCMonth() + (end.getUTCFullYear() - start.getUTCFullYear()) * 12;
+	}, function(date) {
+	  return date.getUTCMonth();
+	});
+
+	var utcMonths = utcMonth.range;
+
+	var utcYear = newInterval(function(date) {
+	  date.setUTCMonth(0, 1);
+	  date.setUTCHours(0, 0, 0, 0);
+	}, function(date, step) {
+	  date.setUTCFullYear(date.getUTCFullYear() + step);
+	}, function(start, end) {
+	  return end.getUTCFullYear() - start.getUTCFullYear();
+	}, function(date) {
+	  return date.getUTCFullYear();
+	});
+
+	// An optimized implementation for this simple case.
+	utcYear.every = function(k) {
+	  return !isFinite(k = Math.floor(k)) || !(k > 0) ? null : newInterval(function(date) {
+	    date.setUTCFullYear(Math.floor(date.getUTCFullYear() / k) * k);
+	    date.setUTCMonth(0, 1);
+	    date.setUTCHours(0, 0, 0, 0);
+	  }, function(date, step) {
+	    date.setUTCFullYear(date.getUTCFullYear() + step * k);
+	  });
+	};
+
+	var utcYears = utcYear.range;
+
+	exports.timeInterval = newInterval;
+	exports.timeMillisecond = millisecond;
+	exports.timeMilliseconds = milliseconds;
+	exports.utcMillisecond = millisecond;
+	exports.utcMilliseconds = milliseconds;
+	exports.timeSecond = second;
+	exports.timeSeconds = seconds;
+	exports.utcSecond = second;
+	exports.utcSeconds = seconds;
+	exports.timeMinute = minute;
+	exports.timeMinutes = minutes;
+	exports.timeHour = hour;
+	exports.timeHours = hours;
+	exports.timeDay = day;
+	exports.timeDays = days;
+	exports.timeWeek = sunday;
+	exports.timeWeeks = sundays;
+	exports.timeSunday = sunday;
+	exports.timeSundays = sundays;
+	exports.timeMonday = monday;
+	exports.timeMondays = mondays;
+	exports.timeTuesday = tuesday;
+	exports.timeTuesdays = tuesdays;
+	exports.timeWednesday = wednesday;
+	exports.timeWednesdays = wednesdays;
+	exports.timeThursday = thursday;
+	exports.timeThursdays = thursdays;
+	exports.timeFriday = friday;
+	exports.timeFridays = fridays;
+	exports.timeSaturday = saturday;
+	exports.timeSaturdays = saturdays;
+	exports.timeMonth = month;
+	exports.timeMonths = months;
+	exports.timeYear = year;
+	exports.timeYears = years;
+	exports.utcMinute = utcMinute;
+	exports.utcMinutes = utcMinutes;
+	exports.utcHour = utcHour;
+	exports.utcHours = utcHours;
+	exports.utcDay = utcDay;
+	exports.utcDays = utcDays;
+	exports.utcWeek = utcSunday;
+	exports.utcWeeks = utcSundays;
+	exports.utcSunday = utcSunday;
+	exports.utcSundays = utcSundays;
+	exports.utcMonday = utcMonday;
+	exports.utcMondays = utcMondays;
+	exports.utcTuesday = utcTuesday;
+	exports.utcTuesdays = utcTuesdays;
+	exports.utcWednesday = utcWednesday;
+	exports.utcWednesdays = utcWednesdays;
+	exports.utcThursday = utcThursday;
+	exports.utcThursdays = utcThursdays;
+	exports.utcFriday = utcFriday;
+	exports.utcFridays = utcFridays;
+	exports.utcSaturday = utcSaturday;
+	exports.utcSaturdays = utcSaturdays;
+	exports.utcMonth = utcMonth;
+	exports.utcMonths = utcMonths;
+	exports.utcYear = utcYear;
+	exports.utcYears = utcYears;
+
+	Object.defineProperty(exports, '__esModule', { value: true });
+
+	})));
+
+
+/***/ },
+/* 12 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// https://d3js.org/d3-time-format/ Version 2.0.5. Copyright 2017 Mike Bostock.
+	(function (global, factory) {
+		 true ? factory(exports, __webpack_require__(11)) :
+		typeof define === 'function' && define.amd ? define(['exports', 'd3-time'], factory) :
+		(factory((global.d3 = global.d3 || {}),global.d3));
+	}(this, (function (exports,d3Time) { 'use strict';
+
+	function localDate(d) {
+	  if (0 <= d.y && d.y < 100) {
+	    var date = new Date(-1, d.m, d.d, d.H, d.M, d.S, d.L);
+	    date.setFullYear(d.y);
+	    return date;
+	  }
+	  return new Date(d.y, d.m, d.d, d.H, d.M, d.S, d.L);
+	}
+
+	function utcDate(d) {
+	  if (0 <= d.y && d.y < 100) {
+	    var date = new Date(Date.UTC(-1, d.m, d.d, d.H, d.M, d.S, d.L));
+	    date.setUTCFullYear(d.y);
+	    return date;
+	  }
+	  return new Date(Date.UTC(d.y, d.m, d.d, d.H, d.M, d.S, d.L));
+	}
+
+	function newYear(y) {
+	  return {y: y, m: 0, d: 1, H: 0, M: 0, S: 0, L: 0};
+	}
+
+	function formatLocale(locale) {
+	  var locale_dateTime = locale.dateTime,
+	      locale_date = locale.date,
+	      locale_time = locale.time,
+	      locale_periods = locale.periods,
+	      locale_weekdays = locale.days,
+	      locale_shortWeekdays = locale.shortDays,
+	      locale_months = locale.months,
+	      locale_shortMonths = locale.shortMonths;
+
+	  var periodRe = formatRe(locale_periods),
+	      periodLookup = formatLookup(locale_periods),
+	      weekdayRe = formatRe(locale_weekdays),
+	      weekdayLookup = formatLookup(locale_weekdays),
+	      shortWeekdayRe = formatRe(locale_shortWeekdays),
+	      shortWeekdayLookup = formatLookup(locale_shortWeekdays),
+	      monthRe = formatRe(locale_months),
+	      monthLookup = formatLookup(locale_months),
+	      shortMonthRe = formatRe(locale_shortMonths),
+	      shortMonthLookup = formatLookup(locale_shortMonths);
+
+	  var formats = {
+	    "a": formatShortWeekday,
+	    "A": formatWeekday,
+	    "b": formatShortMonth,
+	    "B": formatMonth,
+	    "c": null,
+	    "d": formatDayOfMonth,
+	    "e": formatDayOfMonth,
+	    "H": formatHour24,
+	    "I": formatHour12,
+	    "j": formatDayOfYear,
+	    "L": formatMilliseconds,
+	    "m": formatMonthNumber,
+	    "M": formatMinutes,
+	    "p": formatPeriod,
+	    "S": formatSeconds,
+	    "U": formatWeekNumberSunday,
+	    "w": formatWeekdayNumber,
+	    "W": formatWeekNumberMonday,
+	    "x": null,
+	    "X": null,
+	    "y": formatYear,
+	    "Y": formatFullYear,
+	    "Z": formatZone,
+	    "%": formatLiteralPercent
+	  };
+
+	  var utcFormats = {
+	    "a": formatUTCShortWeekday,
+	    "A": formatUTCWeekday,
+	    "b": formatUTCShortMonth,
+	    "B": formatUTCMonth,
+	    "c": null,
+	    "d": formatUTCDayOfMonth,
+	    "e": formatUTCDayOfMonth,
+	    "H": formatUTCHour24,
+	    "I": formatUTCHour12,
+	    "j": formatUTCDayOfYear,
+	    "L": formatUTCMilliseconds,
+	    "m": formatUTCMonthNumber,
+	    "M": formatUTCMinutes,
+	    "p": formatUTCPeriod,
+	    "S": formatUTCSeconds,
+	    "U": formatUTCWeekNumberSunday,
+	    "w": formatUTCWeekdayNumber,
+	    "W": formatUTCWeekNumberMonday,
+	    "x": null,
+	    "X": null,
+	    "y": formatUTCYear,
+	    "Y": formatUTCFullYear,
+	    "Z": formatUTCZone,
+	    "%": formatLiteralPercent
+	  };
+
+	  var parses = {
+	    "a": parseShortWeekday,
+	    "A": parseWeekday,
+	    "b": parseShortMonth,
+	    "B": parseMonth,
+	    "c": parseLocaleDateTime,
+	    "d": parseDayOfMonth,
+	    "e": parseDayOfMonth,
+	    "H": parseHour24,
+	    "I": parseHour24,
+	    "j": parseDayOfYear,
+	    "L": parseMilliseconds,
+	    "m": parseMonthNumber,
+	    "M": parseMinutes,
+	    "p": parsePeriod,
+	    "S": parseSeconds,
+	    "U": parseWeekNumberSunday,
+	    "w": parseWeekdayNumber,
+	    "W": parseWeekNumberMonday,
+	    "x": parseLocaleDate,
+	    "X": parseLocaleTime,
+	    "y": parseYear,
+	    "Y": parseFullYear,
+	    "Z": parseZone,
+	    "%": parseLiteralPercent
+	  };
+
+	  // These recursive directive definitions must be deferred.
+	  formats.x = newFormat(locale_date, formats);
+	  formats.X = newFormat(locale_time, formats);
+	  formats.c = newFormat(locale_dateTime, formats);
+	  utcFormats.x = newFormat(locale_date, utcFormats);
+	  utcFormats.X = newFormat(locale_time, utcFormats);
+	  utcFormats.c = newFormat(locale_dateTime, utcFormats);
+
+	  function newFormat(specifier, formats) {
+	    return function(date) {
+	      var string = [],
+	          i = -1,
+	          j = 0,
+	          n = specifier.length,
+	          c,
+	          pad,
+	          format;
+
+	      if (!(date instanceof Date)) date = new Date(+date);
+
+	      while (++i < n) {
+	        if (specifier.charCodeAt(i) === 37) {
+	          string.push(specifier.slice(j, i));
+	          if ((pad = pads[c = specifier.charAt(++i)]) != null) c = specifier.charAt(++i);
+	          else pad = c === "e" ? " " : "0";
+	          if (format = formats[c]) c = format(date, pad);
+	          string.push(c);
+	          j = i + 1;
+	        }
+	      }
+
+	      string.push(specifier.slice(j, i));
+	      return string.join("");
+	    };
+	  }
+
+	  function newParse(specifier, newDate) {
+	    return function(string) {
+	      var d = newYear(1900),
+	          i = parseSpecifier(d, specifier, string += "", 0);
+	      if (i != string.length) return null;
+
+	      // The am-pm flag is 0 for AM, and 1 for PM.
+	      if ("p" in d) d.H = d.H % 12 + d.p * 12;
+
+	      // Convert day-of-week and week-of-year to day-of-year.
+	      if ("W" in d || "U" in d) {
+	        if (!("w" in d)) d.w = "W" in d ? 1 : 0;
+	        var day = "Z" in d ? utcDate(newYear(d.y)).getUTCDay() : newDate(newYear(d.y)).getDay();
+	        d.m = 0;
+	        d.d = "W" in d ? (d.w + 6) % 7 + d.W * 7 - (day + 5) % 7 : d.w + d.U * 7 - (day + 6) % 7;
+	      }
+
+	      // If a time zone is specified, all fields are interpreted as UTC and then
+	      // offset according to the specified time zone.
+	      if ("Z" in d) {
+	        d.H += d.Z / 100 | 0;
+	        d.M += d.Z % 100;
+	        return utcDate(d);
+	      }
+
+	      // Otherwise, all fields are in local time.
+	      return newDate(d);
+	    };
+	  }
+
+	  function parseSpecifier(d, specifier, string, j) {
+	    var i = 0,
+	        n = specifier.length,
+	        m = string.length,
+	        c,
+	        parse;
+
+	    while (i < n) {
+	      if (j >= m) return -1;
+	      c = specifier.charCodeAt(i++);
+	      if (c === 37) {
+	        c = specifier.charAt(i++);
+	        parse = parses[c in pads ? specifier.charAt(i++) : c];
+	        if (!parse || ((j = parse(d, string, j)) < 0)) return -1;
+	      } else if (c != string.charCodeAt(j++)) {
+	        return -1;
+	      }
+	    }
+
+	    return j;
+	  }
+
+	  function parsePeriod(d, string, i) {
+	    var n = periodRe.exec(string.slice(i));
+	    return n ? (d.p = periodLookup[n[0].toLowerCase()], i + n[0].length) : -1;
+	  }
+
+	  function parseShortWeekday(d, string, i) {
+	    var n = shortWeekdayRe.exec(string.slice(i));
+	    return n ? (d.w = shortWeekdayLookup[n[0].toLowerCase()], i + n[0].length) : -1;
+	  }
+
+	  function parseWeekday(d, string, i) {
+	    var n = weekdayRe.exec(string.slice(i));
+	    return n ? (d.w = weekdayLookup[n[0].toLowerCase()], i + n[0].length) : -1;
+	  }
+
+	  function parseShortMonth(d, string, i) {
+	    var n = shortMonthRe.exec(string.slice(i));
+	    return n ? (d.m = shortMonthLookup[n[0].toLowerCase()], i + n[0].length) : -1;
+	  }
+
+	  function parseMonth(d, string, i) {
+	    var n = monthRe.exec(string.slice(i));
+	    return n ? (d.m = monthLookup[n[0].toLowerCase()], i + n[0].length) : -1;
+	  }
+
+	  function parseLocaleDateTime(d, string, i) {
+	    return parseSpecifier(d, locale_dateTime, string, i);
+	  }
+
+	  function parseLocaleDate(d, string, i) {
+	    return parseSpecifier(d, locale_date, string, i);
+	  }
+
+	  function parseLocaleTime(d, string, i) {
+	    return parseSpecifier(d, locale_time, string, i);
+	  }
+
+	  function formatShortWeekday(d) {
+	    return locale_shortWeekdays[d.getDay()];
+	  }
+
+	  function formatWeekday(d) {
+	    return locale_weekdays[d.getDay()];
+	  }
+
+	  function formatShortMonth(d) {
+	    return locale_shortMonths[d.getMonth()];
+	  }
+
+	  function formatMonth(d) {
+	    return locale_months[d.getMonth()];
+	  }
+
+	  function formatPeriod(d) {
+	    return locale_periods[+(d.getHours() >= 12)];
+	  }
+
+	  function formatUTCShortWeekday(d) {
+	    return locale_shortWeekdays[d.getUTCDay()];
+	  }
+
+	  function formatUTCWeekday(d) {
+	    return locale_weekdays[d.getUTCDay()];
+	  }
+
+	  function formatUTCShortMonth(d) {
+	    return locale_shortMonths[d.getUTCMonth()];
+	  }
+
+	  function formatUTCMonth(d) {
+	    return locale_months[d.getUTCMonth()];
+	  }
+
+	  function formatUTCPeriod(d) {
+	    return locale_periods[+(d.getUTCHours() >= 12)];
+	  }
+
+	  return {
+	    format: function(specifier) {
+	      var f = newFormat(specifier += "", formats);
+	      f.toString = function() { return specifier; };
+	      return f;
+	    },
+	    parse: function(specifier) {
+	      var p = newParse(specifier += "", localDate);
+	      p.toString = function() { return specifier; };
+	      return p;
+	    },
+	    utcFormat: function(specifier) {
+	      var f = newFormat(specifier += "", utcFormats);
+	      f.toString = function() { return specifier; };
+	      return f;
+	    },
+	    utcParse: function(specifier) {
+	      var p = newParse(specifier, utcDate);
+	      p.toString = function() { return specifier; };
+	      return p;
+	    }
+	  };
+	}
+
+	var pads = {"-": "", "_": " ", "0": "0"};
+	var numberRe = /^\s*\d+/;
+	var percentRe = /^%/;
+	var requoteRe = /[\\\^\$\*\+\?\|\[\]\(\)\.\{\}]/g;
+
+	function pad(value, fill, width) {
+	  var sign = value < 0 ? "-" : "",
+	      string = (sign ? -value : value) + "",
+	      length = string.length;
+	  return sign + (length < width ? new Array(width - length + 1).join(fill) + string : string);
+	}
+
+	function requote(s) {
+	  return s.replace(requoteRe, "\\$&");
+	}
+
+	function formatRe(names) {
+	  return new RegExp("^(?:" + names.map(requote).join("|") + ")", "i");
+	}
+
+	function formatLookup(names) {
+	  var map = {}, i = -1, n = names.length;
+	  while (++i < n) map[names[i].toLowerCase()] = i;
+	  return map;
+	}
+
+	function parseWeekdayNumber(d, string, i) {
+	  var n = numberRe.exec(string.slice(i, i + 1));
+	  return n ? (d.w = +n[0], i + n[0].length) : -1;
+	}
+
+	function parseWeekNumberSunday(d, string, i) {
+	  var n = numberRe.exec(string.slice(i));
+	  return n ? (d.U = +n[0], i + n[0].length) : -1;
+	}
+
+	function parseWeekNumberMonday(d, string, i) {
+	  var n = numberRe.exec(string.slice(i));
+	  return n ? (d.W = +n[0], i + n[0].length) : -1;
+	}
+
+	function parseFullYear(d, string, i) {
+	  var n = numberRe.exec(string.slice(i, i + 4));
+	  return n ? (d.y = +n[0], i + n[0].length) : -1;
+	}
+
+	function parseYear(d, string, i) {
+	  var n = numberRe.exec(string.slice(i, i + 2));
+	  return n ? (d.y = +n[0] + (+n[0] > 68 ? 1900 : 2000), i + n[0].length) : -1;
+	}
+
+	function parseZone(d, string, i) {
+	  var n = /^(Z)|([+-]\d\d)(?:\:?(\d\d))?/.exec(string.slice(i, i + 6));
+	  return n ? (d.Z = n[1] ? 0 : -(n[2] + (n[3] || "00")), i + n[0].length) : -1;
+	}
+
+	function parseMonthNumber(d, string, i) {
+	  var n = numberRe.exec(string.slice(i, i + 2));
+	  return n ? (d.m = n[0] - 1, i + n[0].length) : -1;
+	}
+
+	function parseDayOfMonth(d, string, i) {
+	  var n = numberRe.exec(string.slice(i, i + 2));
+	  return n ? (d.d = +n[0], i + n[0].length) : -1;
+	}
+
+	function parseDayOfYear(d, string, i) {
+	  var n = numberRe.exec(string.slice(i, i + 3));
+	  return n ? (d.m = 0, d.d = +n[0], i + n[0].length) : -1;
+	}
+
+	function parseHour24(d, string, i) {
+	  var n = numberRe.exec(string.slice(i, i + 2));
+	  return n ? (d.H = +n[0], i + n[0].length) : -1;
+	}
+
+	function parseMinutes(d, string, i) {
+	  var n = numberRe.exec(string.slice(i, i + 2));
+	  return n ? (d.M = +n[0], i + n[0].length) : -1;
+	}
+
+	function parseSeconds(d, string, i) {
+	  var n = numberRe.exec(string.slice(i, i + 2));
+	  return n ? (d.S = +n[0], i + n[0].length) : -1;
+	}
+
+	function parseMilliseconds(d, string, i) {
+	  var n = numberRe.exec(string.slice(i, i + 3));
+	  return n ? (d.L = +n[0], i + n[0].length) : -1;
+	}
+
+	function parseLiteralPercent(d, string, i) {
+	  var n = percentRe.exec(string.slice(i, i + 1));
+	  return n ? i + n[0].length : -1;
+	}
+
+	function formatDayOfMonth(d, p) {
+	  return pad(d.getDate(), p, 2);
+	}
+
+	function formatHour24(d, p) {
+	  return pad(d.getHours(), p, 2);
+	}
+
+	function formatHour12(d, p) {
+	  return pad(d.getHours() % 12 || 12, p, 2);
+	}
+
+	function formatDayOfYear(d, p) {
+	  return pad(1 + d3Time.timeDay.count(d3Time.timeYear(d), d), p, 3);
+	}
+
+	function formatMilliseconds(d, p) {
+	  return pad(d.getMilliseconds(), p, 3);
+	}
+
+	function formatMonthNumber(d, p) {
+	  return pad(d.getMonth() + 1, p, 2);
+	}
+
+	function formatMinutes(d, p) {
+	  return pad(d.getMinutes(), p, 2);
+	}
+
+	function formatSeconds(d, p) {
+	  return pad(d.getSeconds(), p, 2);
+	}
+
+	function formatWeekNumberSunday(d, p) {
+	  return pad(d3Time.timeSunday.count(d3Time.timeYear(d), d), p, 2);
+	}
+
+	function formatWeekdayNumber(d) {
+	  return d.getDay();
+	}
+
+	function formatWeekNumberMonday(d, p) {
+	  return pad(d3Time.timeMonday.count(d3Time.timeYear(d), d), p, 2);
+	}
+
+	function formatYear(d, p) {
+	  return pad(d.getFullYear() % 100, p, 2);
+	}
+
+	function formatFullYear(d, p) {
+	  return pad(d.getFullYear() % 10000, p, 4);
+	}
+
+	function formatZone(d) {
+	  var z = d.getTimezoneOffset();
+	  return (z > 0 ? "-" : (z *= -1, "+"))
+	      + pad(z / 60 | 0, "0", 2)
+	      + pad(z % 60, "0", 2);
+	}
+
+	function formatUTCDayOfMonth(d, p) {
+	  return pad(d.getUTCDate(), p, 2);
+	}
+
+	function formatUTCHour24(d, p) {
+	  return pad(d.getUTCHours(), p, 2);
+	}
+
+	function formatUTCHour12(d, p) {
+	  return pad(d.getUTCHours() % 12 || 12, p, 2);
+	}
+
+	function formatUTCDayOfYear(d, p) {
+	  return pad(1 + d3Time.utcDay.count(d3Time.utcYear(d), d), p, 3);
+	}
+
+	function formatUTCMilliseconds(d, p) {
+	  return pad(d.getUTCMilliseconds(), p, 3);
+	}
+
+	function formatUTCMonthNumber(d, p) {
+	  return pad(d.getUTCMonth() + 1, p, 2);
+	}
+
+	function formatUTCMinutes(d, p) {
+	  return pad(d.getUTCMinutes(), p, 2);
+	}
+
+	function formatUTCSeconds(d, p) {
+	  return pad(d.getUTCSeconds(), p, 2);
+	}
+
+	function formatUTCWeekNumberSunday(d, p) {
+	  return pad(d3Time.utcSunday.count(d3Time.utcYear(d), d), p, 2);
+	}
+
+	function formatUTCWeekdayNumber(d) {
+	  return d.getUTCDay();
+	}
+
+	function formatUTCWeekNumberMonday(d, p) {
+	  return pad(d3Time.utcMonday.count(d3Time.utcYear(d), d), p, 2);
+	}
+
+	function formatUTCYear(d, p) {
+	  return pad(d.getUTCFullYear() % 100, p, 2);
+	}
+
+	function formatUTCFullYear(d, p) {
+	  return pad(d.getUTCFullYear() % 10000, p, 4);
+	}
+
+	function formatUTCZone() {
+	  return "+0000";
+	}
+
+	function formatLiteralPercent() {
+	  return "%";
+	}
+
+	var locale$1;
+
+
+
+
+
+	defaultLocale({
+	  dateTime: "%x, %X",
+	  date: "%-m/%-d/%Y",
+	  time: "%-I:%M:%S %p",
+	  periods: ["AM", "PM"],
+	  days: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+	  shortDays: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+	  months: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+	  shortMonths: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+	});
+
+	function defaultLocale(definition) {
+	  locale$1 = formatLocale(definition);
+	  exports.timeFormat = locale$1.format;
+	  exports.timeParse = locale$1.parse;
+	  exports.utcFormat = locale$1.utcFormat;
+	  exports.utcParse = locale$1.utcParse;
+	  return locale$1;
+	}
+
+	var isoSpecifier = "%Y-%m-%dT%H:%M:%S.%LZ";
+
+	function formatIsoNative(date) {
+	  return date.toISOString();
+	}
+
+	var formatIso = Date.prototype.toISOString
+	    ? formatIsoNative
+	    : exports.utcFormat(isoSpecifier);
+
+	function parseIsoNative(string) {
+	  var date = new Date(string);
+	  return isNaN(date) ? null : date;
+	}
+
+	var parseIso = +new Date("2000-01-01T00:00:00.000Z")
+	    ? parseIsoNative
+	    : exports.utcParse(isoSpecifier);
+
+	exports.timeFormatDefaultLocale = defaultLocale;
+	exports.timeFormatLocale = formatLocale;
+	exports.isoFormat = formatIso;
+	exports.isoParse = parseIso;
+
+	Object.defineProperty(exports, '__esModule', { value: true });
+
+	})));
+
+
+/***/ },
+/* 13 */
+/***/ function(module, exports, __webpack_require__) {
+
+	// https://d3js.org/d3-selection/ Version 1.0.4. Copyright 2017 Mike Bostock.
+	(function (global, factory) {
+		 true ? factory(exports) :
+		typeof define === 'function' && define.amd ? define(['exports'], factory) :
+		(factory((global.d3 = global.d3 || {})));
+	}(this, (function (exports) { 'use strict';
+
+	var xhtml = "http://www.w3.org/1999/xhtml";
+
+	var namespaces = {
+	  svg: "http://www.w3.org/2000/svg",
+	  xhtml: xhtml,
+	  xlink: "http://www.w3.org/1999/xlink",
+	  xml: "http://www.w3.org/XML/1998/namespace",
+	  xmlns: "http://www.w3.org/2000/xmlns/"
+	};
+
+	var namespace = function(name) {
+	  var prefix = name += "", i = prefix.indexOf(":");
+	  if (i >= 0 && (prefix = name.slice(0, i)) !== "xmlns") name = name.slice(i + 1);
+	  return namespaces.hasOwnProperty(prefix) ? {space: namespaces[prefix], local: name} : name;
+	};
+
+	function creatorInherit(name) {
+	  return function() {
+	    var document = this.ownerDocument,
+	        uri = this.namespaceURI;
+	    return uri === xhtml && document.documentElement.namespaceURI === xhtml
+	        ? document.createElement(name)
+	        : document.createElementNS(uri, name);
+	  };
+	}
+
+	function creatorFixed(fullname) {
+	  return function() {
+	    return this.ownerDocument.createElementNS(fullname.space, fullname.local);
+	  };
+	}
+
+	var creator = function(name) {
+	  var fullname = namespace(name);
+	  return (fullname.local
+	      ? creatorFixed
+	      : creatorInherit)(fullname);
+	};
+
+	var nextId = 0;
+
+	function local() {
+	  return new Local;
+	}
+
+	function Local() {
+	  this._ = "@" + (++nextId).toString(36);
+	}
+
+	Local.prototype = local.prototype = {
+	  constructor: Local,
+	  get: function(node) {
+	    var id = this._;
+	    while (!(id in node)) if (!(node = node.parentNode)) return;
+	    return node[id];
+	  },
+	  set: function(node, value) {
+	    return node[this._] = value;
+	  },
+	  remove: function(node) {
+	    return this._ in node && delete node[this._];
+	  },
+	  toString: function() {
+	    return this._;
+	  }
+	};
+
+	var matcher = function(selector) {
+	  return function() {
+	    return this.matches(selector);
+	  };
+	};
+
+	if (typeof document !== "undefined") {
+	  var element = document.documentElement;
+	  if (!element.matches) {
+	    var vendorMatches = element.webkitMatchesSelector
+	        || element.msMatchesSelector
+	        || element.mozMatchesSelector
+	        || element.oMatchesSelector;
+	    matcher = function(selector) {
+	      return function() {
+	        return vendorMatches.call(this, selector);
+	      };
+	    };
+	  }
+	}
+
+	var matcher$1 = matcher;
+
+	var filterEvents = {};
+
+	exports.event = null;
+
+	if (typeof document !== "undefined") {
+	  var element$1 = document.documentElement;
+	  if (!("onmouseenter" in element$1)) {
+	    filterEvents = {mouseenter: "mouseover", mouseleave: "mouseout"};
+	  }
+	}
+
+	function filterContextListener(listener, index, group) {
+	  listener = contextListener(listener, index, group);
+	  return function(event) {
+	    var related = event.relatedTarget;
+	    if (!related || (related !== this && !(related.compareDocumentPosition(this) & 8))) {
+	      listener.call(this, event);
+	    }
+	  };
+	}
+
+	function contextListener(listener, index, group) {
+	  return function(event1) {
+	    var event0 = exports.event; // Events can be reentrant (e.g., focus).
+	    exports.event = event1;
+	    try {
+	      listener.call(this, this.__data__, index, group);
+	    } finally {
+	      exports.event = event0;
+	    }
+	  };
+	}
+
+	function parseTypenames(typenames) {
+	  return typenames.trim().split(/^|\s+/).map(function(t) {
+	    var name = "", i = t.indexOf(".");
+	    if (i >= 0) name = t.slice(i + 1), t = t.slice(0, i);
+	    return {type: t, name: name};
+	  });
+	}
+
+	function onRemove(typename) {
+	  return function() {
+	    var on = this.__on;
+	    if (!on) return;
+	    for (var j = 0, i = -1, m = on.length, o; j < m; ++j) {
+	      if (o = on[j], (!typename.type || o.type === typename.type) && o.name === typename.name) {
+	        this.removeEventListener(o.type, o.listener, o.capture);
+	      } else {
+	        on[++i] = o;
+	      }
+	    }
+	    if (++i) on.length = i;
+	    else delete this.__on;
+	  };
+	}
+
+	function onAdd(typename, value, capture) {
+	  var wrap = filterEvents.hasOwnProperty(typename.type) ? filterContextListener : contextListener;
+	  return function(d, i, group) {
+	    var on = this.__on, o, listener = wrap(value, i, group);
+	    if (on) for (var j = 0, m = on.length; j < m; ++j) {
+	      if ((o = on[j]).type === typename.type && o.name === typename.name) {
+	        this.removeEventListener(o.type, o.listener, o.capture);
+	        this.addEventListener(o.type, o.listener = listener, o.capture = capture);
+	        o.value = value;
+	        return;
+	      }
+	    }
+	    this.addEventListener(typename.type, listener, capture);
+	    o = {type: typename.type, name: typename.name, value: value, listener: listener, capture: capture};
+	    if (!on) this.__on = [o];
+	    else on.push(o);
+	  };
+	}
+
+	var selection_on = function(typename, value, capture) {
+	  var typenames = parseTypenames(typename + ""), i, n = typenames.length, t;
+
+	  if (arguments.length < 2) {
+	    var on = this.node().__on;
+	    if (on) for (var j = 0, m = on.length, o; j < m; ++j) {
+	      for (i = 0, o = on[j]; i < n; ++i) {
+	        if ((t = typenames[i]).type === o.type && t.name === o.name) {
+	          return o.value;
+	        }
+	      }
+	    }
+	    return;
+	  }
+
+	  on = value ? onAdd : onRemove;
+	  if (capture == null) capture = false;
+	  for (i = 0; i < n; ++i) this.each(on(typenames[i], value, capture));
+	  return this;
+	};
+
+	function customEvent(event1, listener, that, args) {
+	  var event0 = exports.event;
+	  event1.sourceEvent = exports.event;
+	  exports.event = event1;
+	  try {
+	    return listener.apply(that, args);
+	  } finally {
+	    exports.event = event0;
+	  }
+	}
+
+	var sourceEvent = function() {
+	  var current = exports.event, source;
+	  while (source = current.sourceEvent) current = source;
+	  return current;
+	};
+
+	var point = function(node, event) {
+	  var svg = node.ownerSVGElement || node;
+
+	  if (svg.createSVGPoint) {
+	    var point = svg.createSVGPoint();
+	    point.x = event.clientX, point.y = event.clientY;
+	    point = point.matrixTransform(node.getScreenCTM().inverse());
+	    return [point.x, point.y];
+	  }
+
+	  var rect = node.getBoundingClientRect();
+	  return [event.clientX - rect.left - node.clientLeft, event.clientY - rect.top - node.clientTop];
+	};
+
+	var mouse = function(node) {
+	  var event = sourceEvent();
+	  if (event.changedTouches) event = event.changedTouches[0];
+	  return point(node, event);
+	};
+
+	function none() {}
+
+	var selector = function(selector) {
+	  return selector == null ? none : function() {
+	    return this.querySelector(selector);
+	  };
+	};
+
+	var selection_select = function(select) {
+	  if (typeof select !== "function") select = selector(select);
+
+	  for (var groups = this._groups, m = groups.length, subgroups = new Array(m), j = 0; j < m; ++j) {
+	    for (var group = groups[j], n = group.length, subgroup = subgroups[j] = new Array(n), node, subnode, i = 0; i < n; ++i) {
+	      if ((node = group[i]) && (subnode = select.call(node, node.__data__, i, group))) {
+	        if ("__data__" in node) subnode.__data__ = node.__data__;
+	        subgroup[i] = subnode;
+	      }
+	    }
+	  }
+
+	  return new Selection(subgroups, this._parents);
+	};
+
+	function empty() {
+	  return [];
+	}
+
+	var selectorAll = function(selector) {
+	  return selector == null ? empty : function() {
+	    return this.querySelectorAll(selector);
+	  };
+	};
+
+	var selection_selectAll = function(select) {
+	  if (typeof select !== "function") select = selectorAll(select);
+
+	  for (var groups = this._groups, m = groups.length, subgroups = [], parents = [], j = 0; j < m; ++j) {
+	    for (var group = groups[j], n = group.length, node, i = 0; i < n; ++i) {
+	      if (node = group[i]) {
+	        subgroups.push(select.call(node, node.__data__, i, group));
+	        parents.push(node);
+	      }
+	    }
+	  }
+
+	  return new Selection(subgroups, parents);
+	};
+
+	var selection_filter = function(match) {
+	  if (typeof match !== "function") match = matcher$1(match);
+
+	  for (var groups = this._groups, m = groups.length, subgroups = new Array(m), j = 0; j < m; ++j) {
+	    for (var group = groups[j], n = group.length, subgroup = subgroups[j] = [], node, i = 0; i < n; ++i) {
+	      if ((node = group[i]) && match.call(node, node.__data__, i, group)) {
+	        subgroup.push(node);
+	      }
+	    }
+	  }
+
+	  return new Selection(subgroups, this._parents);
+	};
+
+	var sparse = function(update) {
+	  return new Array(update.length);
+	};
+
+	var selection_enter = function() {
+	  return new Selection(this._enter || this._groups.map(sparse), this._parents);
+	};
+
+	function EnterNode(parent, datum) {
+	  this.ownerDocument = parent.ownerDocument;
+	  this.namespaceURI = parent.namespaceURI;
+	  this._next = null;
+	  this._parent = parent;
+	  this.__data__ = datum;
+	}
+
+	EnterNode.prototype = {
+	  constructor: EnterNode,
+	  appendChild: function(child) { return this._parent.insertBefore(child, this._next); },
+	  insertBefore: function(child, next) { return this._parent.insertBefore(child, next); },
+	  querySelector: function(selector) { return this._parent.querySelector(selector); },
+	  querySelectorAll: function(selector) { return this._parent.querySelectorAll(selector); }
+	};
+
+	var constant = function(x) {
+	  return function() {
+	    return x;
+	  };
+	};
+
+	var keyPrefix = "$"; // Protect against keys like “__proto__”.
+
+	function bindIndex(parent, group, enter, update, exit, data) {
+	  var i = 0,
+	      node,
+	      groupLength = group.length,
+	      dataLength = data.length;
+
+	  // Put any non-null nodes that fit into update.
+	  // Put any null nodes into enter.
+	  // Put any remaining data into enter.
+	  for (; i < dataLength; ++i) {
+	    if (node = group[i]) {
+	      node.__data__ = data[i];
+	      update[i] = node;
+	    } else {
+	      enter[i] = new EnterNode(parent, data[i]);
+	    }
+	  }
+
+	  // Put any non-null nodes that don’t fit into exit.
+	  for (; i < groupLength; ++i) {
+	    if (node = group[i]) {
+	      exit[i] = node;
+	    }
+	  }
+	}
+
+	function bindKey(parent, group, enter, update, exit, data, key) {
+	  var i,
+	      node,
+	      nodeByKeyValue = {},
+	      groupLength = group.length,
+	      dataLength = data.length,
+	      keyValues = new Array(groupLength),
+	      keyValue;
+
+	  // Compute the key for each node.
+	  // If multiple nodes have the same key, the duplicates are added to exit.
+	  for (i = 0; i < groupLength; ++i) {
+	    if (node = group[i]) {
+	      keyValues[i] = keyValue = keyPrefix + key.call(node, node.__data__, i, group);
+	      if (keyValue in nodeByKeyValue) {
+	        exit[i] = node;
+	      } else {
+	        nodeByKeyValue[keyValue] = node;
+	      }
+	    }
+	  }
+
+	  // Compute the key for each datum.
+	  // If there a node associated with this key, join and add it to update.
+	  // If there is not (or the key is a duplicate), add it to enter.
+	  for (i = 0; i < dataLength; ++i) {
+	    keyValue = keyPrefix + key.call(parent, data[i], i, data);
+	    if (node = nodeByKeyValue[keyValue]) {
+	      update[i] = node;
+	      node.__data__ = data[i];
+	      nodeByKeyValue[keyValue] = null;
+	    } else {
+	      enter[i] = new EnterNode(parent, data[i]);
+	    }
+	  }
+
+	  // Add any remaining nodes that were not bound to data to exit.
+	  for (i = 0; i < groupLength; ++i) {
+	    if ((node = group[i]) && (nodeByKeyValue[keyValues[i]] === node)) {
+	      exit[i] = node;
+	    }
+	  }
+	}
+
+	var selection_data = function(value, key) {
+	  if (!value) {
+	    data = new Array(this.size()), j = -1;
+	    this.each(function(d) { data[++j] = d; });
+	    return data;
+	  }
+
+	  var bind = key ? bindKey : bindIndex,
+	      parents = this._parents,
+	      groups = this._groups;
+
+	  if (typeof value !== "function") value = constant(value);
+
+	  for (var m = groups.length, update = new Array(m), enter = new Array(m), exit = new Array(m), j = 0; j < m; ++j) {
+	    var parent = parents[j],
+	        group = groups[j],
+	        groupLength = group.length,
+	        data = value.call(parent, parent && parent.__data__, j, parents),
+	        dataLength = data.length,
+	        enterGroup = enter[j] = new Array(dataLength),
+	        updateGroup = update[j] = new Array(dataLength),
+	        exitGroup = exit[j] = new Array(groupLength);
+
+	    bind(parent, group, enterGroup, updateGroup, exitGroup, data, key);
+
+	    // Now connect the enter nodes to their following update node, such that
+	    // appendChild can insert the materialized enter node before this node,
+	    // rather than at the end of the parent node.
+	    for (var i0 = 0, i1 = 0, previous, next; i0 < dataLength; ++i0) {
+	      if (previous = enterGroup[i0]) {
+	        if (i0 >= i1) i1 = i0 + 1;
+	        while (!(next = updateGroup[i1]) && ++i1 < dataLength);
+	        previous._next = next || null;
+	      }
+	    }
+	  }
+
+	  update = new Selection(update, parents);
+	  update._enter = enter;
+	  update._exit = exit;
+	  return update;
+	};
+
+	var selection_exit = function() {
+	  return new Selection(this._exit || this._groups.map(sparse), this._parents);
+	};
+
+	var selection_merge = function(selection) {
+
+	  for (var groups0 = this._groups, groups1 = selection._groups, m0 = groups0.length, m1 = groups1.length, m = Math.min(m0, m1), merges = new Array(m0), j = 0; j < m; ++j) {
+	    for (var group0 = groups0[j], group1 = groups1[j], n = group0.length, merge = merges[j] = new Array(n), node, i = 0; i < n; ++i) {
+	      if (node = group0[i] || group1[i]) {
+	        merge[i] = node;
+	      }
+	    }
+	  }
+
+	  for (; j < m0; ++j) {
+	    merges[j] = groups0[j];
+	  }
+
+	  return new Selection(merges, this._parents);
+	};
+
+	var selection_order = function() {
+
+	  for (var groups = this._groups, j = -1, m = groups.length; ++j < m;) {
+	    for (var group = groups[j], i = group.length - 1, next = group[i], node; --i >= 0;) {
+	      if (node = group[i]) {
+	        if (next && next !== node.nextSibling) next.parentNode.insertBefore(node, next);
+	        next = node;
+	      }
+	    }
+	  }
+
+	  return this;
+	};
+
+	var selection_sort = function(compare) {
+	  if (!compare) compare = ascending;
+
+	  function compareNode(a, b) {
+	    return a && b ? compare(a.__data__, b.__data__) : !a - !b;
+	  }
+
+	  for (var groups = this._groups, m = groups.length, sortgroups = new Array(m), j = 0; j < m; ++j) {
+	    for (var group = groups[j], n = group.length, sortgroup = sortgroups[j] = new Array(n), node, i = 0; i < n; ++i) {
+	      if (node = group[i]) {
+	        sortgroup[i] = node;
+	      }
+	    }
+	    sortgroup.sort(compareNode);
+	  }
+
+	  return new Selection(sortgroups, this._parents).order();
+	};
+
+	function ascending(a, b) {
+	  return a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
+	}
+
+	var selection_call = function() {
+	  var callback = arguments[0];
+	  arguments[0] = this;
+	  callback.apply(null, arguments);
+	  return this;
+	};
+
+	var selection_nodes = function() {
+	  var nodes = new Array(this.size()), i = -1;
+	  this.each(function() { nodes[++i] = this; });
+	  return nodes;
+	};
+
+	var selection_node = function() {
+
+	  for (var groups = this._groups, j = 0, m = groups.length; j < m; ++j) {
+	    for (var group = groups[j], i = 0, n = group.length; i < n; ++i) {
+	      var node = group[i];
+	      if (node) return node;
+	    }
+	  }
+
+	  return null;
+	};
+
+	var selection_size = function() {
+	  var size = 0;
+	  this.each(function() { ++size; });
+	  return size;
+	};
+
+	var selection_empty = function() {
+	  return !this.node();
+	};
+
+	var selection_each = function(callback) {
+
+	  for (var groups = this._groups, j = 0, m = groups.length; j < m; ++j) {
+	    for (var group = groups[j], i = 0, n = group.length, node; i < n; ++i) {
+	      if (node = group[i]) callback.call(node, node.__data__, i, group);
+	    }
+	  }
+
+	  return this;
+	};
+
+	function attrRemove(name) {
+	  return function() {
+	    this.removeAttribute(name);
+	  };
+	}
+
+	function attrRemoveNS(fullname) {
+	  return function() {
+	    this.removeAttributeNS(fullname.space, fullname.local);
+	  };
+	}
+
+	function attrConstant(name, value) {
+	  return function() {
+	    this.setAttribute(name, value);
+	  };
+	}
+
+	function attrConstantNS(fullname, value) {
+	  return function() {
+	    this.setAttributeNS(fullname.space, fullname.local, value);
+	  };
+	}
+
+	function attrFunction(name, value) {
+	  return function() {
+	    var v = value.apply(this, arguments);
+	    if (v == null) this.removeAttribute(name);
+	    else this.setAttribute(name, v);
+	  };
+	}
+
+	function attrFunctionNS(fullname, value) {
+	  return function() {
+	    var v = value.apply(this, arguments);
+	    if (v == null) this.removeAttributeNS(fullname.space, fullname.local);
+	    else this.setAttributeNS(fullname.space, fullname.local, v);
+	  };
+	}
+
+	var selection_attr = function(name, value) {
+	  var fullname = namespace(name);
+
+	  if (arguments.length < 2) {
+	    var node = this.node();
+	    return fullname.local
+	        ? node.getAttributeNS(fullname.space, fullname.local)
+	        : node.getAttribute(fullname);
+	  }
+
+	  return this.each((value == null
+	      ? (fullname.local ? attrRemoveNS : attrRemove) : (typeof value === "function"
+	      ? (fullname.local ? attrFunctionNS : attrFunction)
+	      : (fullname.local ? attrConstantNS : attrConstant)))(fullname, value));
+	};
+
+	var defaultView = function(node) {
+	  return (node.ownerDocument && node.ownerDocument.defaultView) // node is a Node
+	      || (node.document && node) // node is a Window
+	      || node.defaultView; // node is a Document
+	};
+
+	function styleRemove(name) {
+	  return function() {
+	    this.style.removeProperty(name);
+	  };
+	}
+
+	function styleConstant(name, value, priority) {
+	  return function() {
+	    this.style.setProperty(name, value, priority);
+	  };
+	}
+
+	function styleFunction(name, value, priority) {
+	  return function() {
+	    var v = value.apply(this, arguments);
+	    if (v == null) this.style.removeProperty(name);
+	    else this.style.setProperty(name, v, priority);
+	  };
+	}
+
+	var selection_style = function(name, value, priority) {
+	  var node;
+	  return arguments.length > 1
+	      ? this.each((value == null
+	            ? styleRemove : typeof value === "function"
+	            ? styleFunction
+	            : styleConstant)(name, value, priority == null ? "" : priority))
+	      : defaultView(node = this.node())
+	          .getComputedStyle(node, null)
+	          .getPropertyValue(name);
+	};
+
+	function propertyRemove(name) {
+	  return function() {
+	    delete this[name];
+	  };
+	}
+
+	function propertyConstant(name, value) {
+	  return function() {
+	    this[name] = value;
+	  };
+	}
+
+	function propertyFunction(name, value) {
+	  return function() {
+	    var v = value.apply(this, arguments);
+	    if (v == null) delete this[name];
+	    else this[name] = v;
+	  };
+	}
+
+	var selection_property = function(name, value) {
+	  return arguments.length > 1
+	      ? this.each((value == null
+	          ? propertyRemove : typeof value === "function"
+	          ? propertyFunction
+	          : propertyConstant)(name, value))
+	      : this.node()[name];
+	};
+
+	function classArray(string) {
+	  return string.trim().split(/^|\s+/);
+	}
+
+	function classList(node) {
+	  return node.classList || new ClassList(node);
+	}
+
+	function ClassList(node) {
+	  this._node = node;
+	  this._names = classArray(node.getAttribute("class") || "");
+	}
+
+	ClassList.prototype = {
+	  add: function(name) {
+	    var i = this._names.indexOf(name);
+	    if (i < 0) {
+	      this._names.push(name);
+	      this._node.setAttribute("class", this._names.join(" "));
+	    }
+	  },
+	  remove: function(name) {
+	    var i = this._names.indexOf(name);
+	    if (i >= 0) {
+	      this._names.splice(i, 1);
+	      this._node.setAttribute("class", this._names.join(" "));
+	    }
+	  },
+	  contains: function(name) {
+	    return this._names.indexOf(name) >= 0;
+	  }
+	};
+
+	function classedAdd(node, names) {
+	  var list = classList(node), i = -1, n = names.length;
+	  while (++i < n) list.add(names[i]);
+	}
+
+	function classedRemove(node, names) {
+	  var list = classList(node), i = -1, n = names.length;
+	  while (++i < n) list.remove(names[i]);
+	}
+
+	function classedTrue(names) {
+	  return function() {
+	    classedAdd(this, names);
+	  };
+	}
+
+	function classedFalse(names) {
+	  return function() {
+	    classedRemove(this, names);
+	  };
+	}
+
+	function classedFunction(names, value) {
+	  return function() {
+	    (value.apply(this, arguments) ? classedAdd : classedRemove)(this, names);
+	  };
+	}
+
+	var selection_classed = function(name, value) {
+	  var names = classArray(name + "");
+
+	  if (arguments.length < 2) {
+	    var list = classList(this.node()), i = -1, n = names.length;
+	    while (++i < n) if (!list.contains(names[i])) return false;
+	    return true;
+	  }
+
+	  return this.each((typeof value === "function"
+	      ? classedFunction : value
+	      ? classedTrue
+	      : classedFalse)(names, value));
+	};
+
+	function textRemove() {
+	  this.textContent = "";
+	}
+
+	function textConstant(value) {
+	  return function() {
+	    this.textContent = value;
+	  };
+	}
+
+	function textFunction(value) {
+	  return function() {
+	    var v = value.apply(this, arguments);
+	    this.textContent = v == null ? "" : v;
+	  };
+	}
+
+	var selection_text = function(value) {
+	  return arguments.length
+	      ? this.each(value == null
+	          ? textRemove : (typeof value === "function"
+	          ? textFunction
+	          : textConstant)(value))
+	      : this.node().textContent;
+	};
+
+	function htmlRemove() {
+	  this.innerHTML = "";
+	}
+
+	function htmlConstant(value) {
+	  return function() {
+	    this.innerHTML = value;
+	  };
+	}
+
+	function htmlFunction(value) {
+	  return function() {
+	    var v = value.apply(this, arguments);
+	    this.innerHTML = v == null ? "" : v;
+	  };
+	}
+
+	var selection_html = function(value) {
+	  return arguments.length
+	      ? this.each(value == null
+	          ? htmlRemove : (typeof value === "function"
+	          ? htmlFunction
+	          : htmlConstant)(value))
+	      : this.node().innerHTML;
+	};
+
+	function raise() {
+	  if (this.nextSibling) this.parentNode.appendChild(this);
+	}
+
+	var selection_raise = function() {
+	  return this.each(raise);
+	};
+
+	function lower() {
+	  if (this.previousSibling) this.parentNode.insertBefore(this, this.parentNode.firstChild);
+	}
+
+	var selection_lower = function() {
+	  return this.each(lower);
+	};
+
+	var selection_append = function(name) {
+	  var create = typeof name === "function" ? name : creator(name);
+	  return this.select(function() {
+	    return this.appendChild(create.apply(this, arguments));
+	  });
+	};
+
+	function constantNull() {
+	  return null;
+	}
+
+	var selection_insert = function(name, before) {
+	  var create = typeof name === "function" ? name : creator(name),
+	      select = before == null ? constantNull : typeof before === "function" ? before : selector(before);
+	  return this.select(function() {
+	    return this.insertBefore(create.apply(this, arguments), select.apply(this, arguments) || null);
+	  });
+	};
+
+	function remove() {
+	  var parent = this.parentNode;
+	  if (parent) parent.removeChild(this);
+	}
+
+	var selection_remove = function() {
+	  return this.each(remove);
+	};
+
+	var selection_datum = function(value) {
+	  return arguments.length
+	      ? this.property("__data__", value)
+	      : this.node().__data__;
+	};
+
+	function dispatchEvent(node, type, params) {
+	  var window = defaultView(node),
+	      event = window.CustomEvent;
+
+	  if (event) {
+	    event = new event(type, params);
+	  } else {
+	    event = window.document.createEvent("Event");
+	    if (params) event.initEvent(type, params.bubbles, params.cancelable), event.detail = params.detail;
+	    else event.initEvent(type, false, false);
+	  }
+
+	  node.dispatchEvent(event);
+	}
+
+	function dispatchConstant(type, params) {
+	  return function() {
+	    return dispatchEvent(this, type, params);
+	  };
+	}
+
+	function dispatchFunction(type, params) {
+	  return function() {
+	    return dispatchEvent(this, type, params.apply(this, arguments));
+	  };
+	}
+
+	var selection_dispatch = function(type, params) {
+	  return this.each((typeof params === "function"
+	      ? dispatchFunction
+	      : dispatchConstant)(type, params));
+	};
+
+	var root = [null];
+
+	function Selection(groups, parents) {
+	  this._groups = groups;
+	  this._parents = parents;
+	}
+
+	function selection() {
+	  return new Selection([[document.documentElement]], root);
+	}
+
+	Selection.prototype = selection.prototype = {
+	  constructor: Selection,
+	  select: selection_select,
+	  selectAll: selection_selectAll,
+	  filter: selection_filter,
+	  data: selection_data,
+	  enter: selection_enter,
+	  exit: selection_exit,
+	  merge: selection_merge,
+	  order: selection_order,
+	  sort: selection_sort,
+	  call: selection_call,
+	  nodes: selection_nodes,
+	  node: selection_node,
+	  size: selection_size,
+	  empty: selection_empty,
+	  each: selection_each,
+	  attr: selection_attr,
+	  style: selection_style,
+	  property: selection_property,
+	  classed: selection_classed,
+	  text: selection_text,
+	  html: selection_html,
+	  raise: selection_raise,
+	  lower: selection_lower,
+	  append: selection_append,
+	  insert: selection_insert,
+	  remove: selection_remove,
+	  datum: selection_datum,
+	  on: selection_on,
+	  dispatch: selection_dispatch
+	};
+
+	var select = function(selector) {
+	  return typeof selector === "string"
+	      ? new Selection([[document.querySelector(selector)]], [document.documentElement])
+	      : new Selection([[selector]], root);
+	};
+
+	var selectAll = function(selector) {
+	  return typeof selector === "string"
+	      ? new Selection([document.querySelectorAll(selector)], [document.documentElement])
+	      : new Selection([selector == null ? [] : selector], root);
+	};
+
+	var touch = function(node, touches, identifier) {
+	  if (arguments.length < 3) identifier = touches, touches = sourceEvent().changedTouches;
+
+	  for (var i = 0, n = touches ? touches.length : 0, touch; i < n; ++i) {
+	    if ((touch = touches[i]).identifier === identifier) {
+	      return point(node, touch);
+	    }
+	  }
+
+	  return null;
+	};
+
+	var touches = function(node, touches) {
+	  if (touches == null) touches = sourceEvent().touches;
+
+	  for (var i = 0, n = touches ? touches.length : 0, points = new Array(n); i < n; ++i) {
+	    points[i] = point(node, touches[i]);
+	  }
+
+	  return points;
+	};
+
+	exports.creator = creator;
+	exports.local = local;
+	exports.matcher = matcher$1;
+	exports.mouse = mouse;
+	exports.namespace = namespace;
+	exports.namespaces = namespaces;
+	exports.select = select;
+	exports.selectAll = selectAll;
+	exports.selection = selection;
+	exports.selector = selector;
+	exports.selectorAll = selectorAll;
+	exports.touch = touch;
+	exports.touches = touches;
+	exports.window = defaultView;
+	exports.customEvent = customEvent;
+
+	Object.defineProperty(exports, '__esModule', { value: true });
+
+	})));
+
+
+/***/ },
+/* 14 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var parse = __webpack_require__(4);
+	var parse = __webpack_require__(15);
 
-	var DataFactoryFunc = function DataFactoryFunc() {};
+	var DataFactory = function DataFactory() {};
 
-	DataFactoryFunc.prototype = {
+	DataFactory.prototype = {
 	  /**
 	   * runs through data and grabs significant values for drawing line
 	   *
@@ -471,8 +5984,8 @@ var main =
 	   * @param {object} config -  data object from config file
 	   * @returns {object} dataObj - data needed for creating a new chart
 	   */
-	  grabData: function grabData(data, config) {
-	    var moment = __webpack_require__(37);
+	  createDataObj: function createDataObj(data, config) {
+	    var moment = __webpack_require__(46);
 	    var output = [],
 	        bounds = {
 	      minX: null,
@@ -481,10 +5994,8 @@ var main =
 	      maxY: null
 	    },
 	        axes = {
-	      xTick: null,
-	      yTick: null,
-	      xAxis: null,
-	      yAxis: null
+	      yLabel: null,
+	      timeFormat: null
 	    },
 	        markers = [];
 
@@ -496,10 +6007,8 @@ var main =
 	      bounds.minX = this.getMin(x, bounds.minX);
 	      bounds.maxX = this.getMax(x, bounds.maxX);
 	      output.push([x, y]);
-	      axes.xTick = config.xTickInterval;
-	      axes.yTick = config.yTickInterval;
-	      axes.xLabel = config.xLabel;
-	      axes.yLabel = config.yLabel;
+	      axes.timeFormat = config.timeDisplayFormat;
+	      axes.yLabel = config.yLabel ? config.yLabel : config.yAxis;
 	    }
 	    markers = this.getSlideMarkers(config.slides);
 
@@ -563,7 +6072,7 @@ var main =
 	   */
 	  getSlideMarkers: function getSlideMarkers(slides) {
 	    var markers = [];
-	    slides.map(function (slide) {
+	    slides.map(function (slide, index) {
 	      markers.push(slide.rowNum);
 	    });
 	    return markers;
@@ -604,7 +6113,7 @@ var main =
 	    return new Promise(function (resolve, reject) {
 	      self.get(config.filename).then(function (response) {
 	        parse(response, { 'columns': true }, function (err, data) {
-	          resolve(self.grabData(data, config));
+	          resolve(self.createDataObj(data, config));
 	        });
 	      });
 	    });
@@ -612,21 +6121,21 @@ var main =
 	};
 
 	module.exports = {
-	  DataFactoryFunc: DataFactoryFunc
+	  DataFactory: DataFactory
 	};
 
 /***/ },
-/* 4 */
+/* 15 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer, process) {// Generated by CoffeeScript 1.10.0
 	var Parser, StringDecoder, stream, util;
 
-	stream = __webpack_require__(10);
+	stream = __webpack_require__(21);
 
-	util = __webpack_require__(32);
+	util = __webpack_require__(43);
 
-	StringDecoder = __webpack_require__(25).StringDecoder;
+	StringDecoder = __webpack_require__(36).StringDecoder;
 
 	module.exports = function() {
 	  var callback, called, chunks, data, options, parser;
@@ -1130,10 +6639,10 @@ var main =
 	  return results;
 	};
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(5).Buffer, __webpack_require__(9)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(16).Buffer, __webpack_require__(20)))
 
 /***/ },
-/* 5 */
+/* 16 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global) {/*!
@@ -1146,9 +6655,9 @@ var main =
 
 	'use strict'
 
-	var base64 = __webpack_require__(6)
-	var ieee754 = __webpack_require__(7)
-	var isArray = __webpack_require__(8)
+	var base64 = __webpack_require__(17)
+	var ieee754 = __webpack_require__(18)
+	var isArray = __webpack_require__(19)
 
 	exports.Buffer = Buffer
 	exports.SlowBuffer = SlowBuffer
@@ -2929,7 +8438,7 @@ var main =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 6 */
+/* 17 */
 /***/ function(module, exports) {
 
 	'use strict'
@@ -3049,7 +8558,7 @@ var main =
 
 
 /***/ },
-/* 7 */
+/* 18 */
 /***/ function(module, exports) {
 
 	exports.read = function (buffer, offset, isLE, mLen, nBytes) {
@@ -3139,7 +8648,7 @@ var main =
 
 
 /***/ },
-/* 8 */
+/* 19 */
 /***/ function(module, exports) {
 
 	var toString = {}.toString;
@@ -3150,7 +8659,7 @@ var main =
 
 
 /***/ },
-/* 9 */
+/* 20 */
 /***/ function(module, exports) {
 
 	// shim for using process in browser
@@ -3336,7 +8845,7 @@ var main =
 
 
 /***/ },
-/* 10 */
+/* 21 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Copyright Joyent, Inc. and other Node contributors.
@@ -3362,15 +8871,15 @@ var main =
 
 	module.exports = Stream;
 
-	var EE = __webpack_require__(11).EventEmitter;
-	var inherits = __webpack_require__(12);
+	var EE = __webpack_require__(22).EventEmitter;
+	var inherits = __webpack_require__(23);
 
 	inherits(Stream, EE);
-	Stream.Readable = __webpack_require__(13);
-	Stream.Writable = __webpack_require__(28);
-	Stream.Duplex = __webpack_require__(29);
-	Stream.Transform = __webpack_require__(30);
-	Stream.PassThrough = __webpack_require__(31);
+	Stream.Readable = __webpack_require__(24);
+	Stream.Writable = __webpack_require__(39);
+	Stream.Duplex = __webpack_require__(40);
+	Stream.Transform = __webpack_require__(41);
+	Stream.PassThrough = __webpack_require__(42);
 
 	// Backwards-compat with node 0.4.x
 	Stream.Stream = Stream;
@@ -3469,7 +8978,7 @@ var main =
 
 
 /***/ },
-/* 11 */
+/* 22 */
 /***/ function(module, exports) {
 
 	// Copyright Joyent, Inc. and other Node contributors.
@@ -3777,7 +9286,7 @@ var main =
 
 
 /***/ },
-/* 12 */
+/* 23 */
 /***/ function(module, exports) {
 
 	if (typeof Object.create === 'function') {
@@ -3806,30 +9315,30 @@ var main =
 
 
 /***/ },
-/* 13 */
+/* 24 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {var Stream = (function (){
 	  try {
-	    return __webpack_require__(10); // hack to fix a circular dependency issue when used with browserify
+	    return __webpack_require__(21); // hack to fix a circular dependency issue when used with browserify
 	  } catch(_){}
 	}());
-	exports = module.exports = __webpack_require__(14);
+	exports = module.exports = __webpack_require__(25);
 	exports.Stream = Stream || exports;
 	exports.Readable = exports;
-	exports.Writable = __webpack_require__(21);
-	exports.Duplex = __webpack_require__(20);
-	exports.Transform = __webpack_require__(26);
-	exports.PassThrough = __webpack_require__(27);
+	exports.Writable = __webpack_require__(32);
+	exports.Duplex = __webpack_require__(31);
+	exports.Transform = __webpack_require__(37);
+	exports.PassThrough = __webpack_require__(38);
 
 	if (!process.browser && process.env.READABLE_STREAM === 'disable' && Stream) {
 	  module.exports = Stream;
 	}
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(9)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(20)))
 
 /***/ },
-/* 14 */
+/* 25 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
@@ -3837,11 +9346,11 @@ var main =
 	module.exports = Readable;
 
 	/*<replacement>*/
-	var processNextTick = __webpack_require__(15);
+	var processNextTick = __webpack_require__(26);
 	/*</replacement>*/
 
 	/*<replacement>*/
-	var isArray = __webpack_require__(8);
+	var isArray = __webpack_require__(19);
 	/*</replacement>*/
 
 	/*<replacement>*/
@@ -3851,7 +9360,7 @@ var main =
 	Readable.ReadableState = ReadableState;
 
 	/*<replacement>*/
-	var EE = __webpack_require__(11).EventEmitter;
+	var EE = __webpack_require__(22).EventEmitter;
 
 	var EElistenerCount = function (emitter, type) {
 	  return emitter.listeners(type).length;
@@ -3862,25 +9371,25 @@ var main =
 	var Stream;
 	(function () {
 	  try {
-	    Stream = __webpack_require__(10);
+	    Stream = __webpack_require__(21);
 	  } catch (_) {} finally {
-	    if (!Stream) Stream = __webpack_require__(11).EventEmitter;
+	    if (!Stream) Stream = __webpack_require__(22).EventEmitter;
 	  }
 	})();
 	/*</replacement>*/
 
-	var Buffer = __webpack_require__(5).Buffer;
+	var Buffer = __webpack_require__(16).Buffer;
 	/*<replacement>*/
-	var bufferShim = __webpack_require__(16);
+	var bufferShim = __webpack_require__(27);
 	/*</replacement>*/
 
 	/*<replacement>*/
-	var util = __webpack_require__(17);
-	util.inherits = __webpack_require__(12);
+	var util = __webpack_require__(28);
+	util.inherits = __webpack_require__(23);
 	/*</replacement>*/
 
 	/*<replacement>*/
-	var debugUtil = __webpack_require__(18);
+	var debugUtil = __webpack_require__(29);
 	var debug = void 0;
 	if (debugUtil && debugUtil.debuglog) {
 	  debug = debugUtil.debuglog('stream');
@@ -3889,7 +9398,7 @@ var main =
 	}
 	/*</replacement>*/
 
-	var BufferList = __webpack_require__(19);
+	var BufferList = __webpack_require__(30);
 	var StringDecoder;
 
 	util.inherits(Readable, Stream);
@@ -3909,7 +9418,7 @@ var main =
 	}
 
 	function ReadableState(options, stream) {
-	  Duplex = Duplex || __webpack_require__(20);
+	  Duplex = Duplex || __webpack_require__(31);
 
 	  options = options || {};
 
@@ -3971,14 +9480,14 @@ var main =
 	  this.decoder = null;
 	  this.encoding = null;
 	  if (options.encoding) {
-	    if (!StringDecoder) StringDecoder = __webpack_require__(25).StringDecoder;
+	    if (!StringDecoder) StringDecoder = __webpack_require__(36).StringDecoder;
 	    this.decoder = new StringDecoder(options.encoding);
 	    this.encoding = options.encoding;
 	  }
 	}
 
 	function Readable(options) {
-	  Duplex = Duplex || __webpack_require__(20);
+	  Duplex = Duplex || __webpack_require__(31);
 
 	  if (!(this instanceof Readable)) return new Readable(options);
 
@@ -4081,7 +9590,7 @@ var main =
 
 	// backwards compatibility.
 	Readable.prototype.setEncoding = function (enc) {
-	  if (!StringDecoder) StringDecoder = __webpack_require__(25).StringDecoder;
+	  if (!StringDecoder) StringDecoder = __webpack_require__(36).StringDecoder;
 	  this._readableState.decoder = new StringDecoder(enc);
 	  this._readableState.encoding = enc;
 	  return this;
@@ -4773,10 +10282,10 @@ var main =
 	  }
 	  return -1;
 	}
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(9)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(20)))
 
 /***/ },
-/* 15 */
+/* 26 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
@@ -4823,15 +10332,15 @@ var main =
 	  }
 	}
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(9)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(20)))
 
 /***/ },
-/* 16 */
+/* 27 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global) {'use strict';
 
-	var buffer = __webpack_require__(5);
+	var buffer = __webpack_require__(16);
 	var Buffer = buffer.Buffer;
 	var SlowBuffer = buffer.SlowBuffer;
 	var MAX_LEN = buffer.kMaxLength || 2147483647;
@@ -4941,7 +10450,7 @@ var main =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 17 */
+/* 28 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {// Copyright Joyent, Inc. and other Node contributors.
@@ -5052,23 +10561,23 @@ var main =
 	  return Object.prototype.toString.call(o);
 	}
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(5).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(16).Buffer))
 
 /***/ },
-/* 18 */
+/* 29 */
 /***/ function(module, exports) {
 
 	/* (ignored) */
 
 /***/ },
-/* 19 */
+/* 30 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var Buffer = __webpack_require__(5).Buffer;
+	var Buffer = __webpack_require__(16).Buffer;
 	/*<replacement>*/
-	var bufferShim = __webpack_require__(16);
+	var bufferShim = __webpack_require__(27);
 	/*</replacement>*/
 
 	module.exports = BufferList;
@@ -5130,7 +10639,7 @@ var main =
 	};
 
 /***/ },
-/* 20 */
+/* 31 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// a duplex stream is just a stream that is both readable and writable.
@@ -5153,16 +10662,16 @@ var main =
 	module.exports = Duplex;
 
 	/*<replacement>*/
-	var processNextTick = __webpack_require__(15);
+	var processNextTick = __webpack_require__(26);
 	/*</replacement>*/
 
 	/*<replacement>*/
-	var util = __webpack_require__(17);
-	util.inherits = __webpack_require__(12);
+	var util = __webpack_require__(28);
+	util.inherits = __webpack_require__(23);
 	/*</replacement>*/
 
-	var Readable = __webpack_require__(14);
-	var Writable = __webpack_require__(21);
+	var Readable = __webpack_require__(25);
+	var Writable = __webpack_require__(32);
 
 	util.inherits(Duplex, Readable);
 
@@ -5210,7 +10719,7 @@ var main =
 	}
 
 /***/ },
-/* 21 */
+/* 32 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process, setImmediate) {// A bit simpler than readable streams.
@@ -5222,7 +10731,7 @@ var main =
 	module.exports = Writable;
 
 	/*<replacement>*/
-	var processNextTick = __webpack_require__(15);
+	var processNextTick = __webpack_require__(26);
 	/*</replacement>*/
 
 	/*<replacement>*/
@@ -5236,13 +10745,13 @@ var main =
 	Writable.WritableState = WritableState;
 
 	/*<replacement>*/
-	var util = __webpack_require__(17);
-	util.inherits = __webpack_require__(12);
+	var util = __webpack_require__(28);
+	util.inherits = __webpack_require__(23);
 	/*</replacement>*/
 
 	/*<replacement>*/
 	var internalUtil = {
-	  deprecate: __webpack_require__(24)
+	  deprecate: __webpack_require__(35)
 	};
 	/*</replacement>*/
 
@@ -5250,16 +10759,16 @@ var main =
 	var Stream;
 	(function () {
 	  try {
-	    Stream = __webpack_require__(10);
+	    Stream = __webpack_require__(21);
 	  } catch (_) {} finally {
-	    if (!Stream) Stream = __webpack_require__(11).EventEmitter;
+	    if (!Stream) Stream = __webpack_require__(22).EventEmitter;
 	  }
 	})();
 	/*</replacement>*/
 
-	var Buffer = __webpack_require__(5).Buffer;
+	var Buffer = __webpack_require__(16).Buffer;
 	/*<replacement>*/
-	var bufferShim = __webpack_require__(16);
+	var bufferShim = __webpack_require__(27);
 	/*</replacement>*/
 
 	util.inherits(Writable, Stream);
@@ -5274,7 +10783,7 @@ var main =
 	}
 
 	function WritableState(options, stream) {
-	  Duplex = Duplex || __webpack_require__(20);
+	  Duplex = Duplex || __webpack_require__(31);
 
 	  options = options || {};
 
@@ -5408,7 +10917,7 @@ var main =
 	}
 
 	function Writable(options) {
-	  Duplex = Duplex || __webpack_require__(20);
+	  Duplex = Duplex || __webpack_require__(31);
 
 	  // Writable ctor is applied to Duplexes, too.
 	  // `realHasInstance` is necessary because using plain `instanceof`
@@ -5767,10 +11276,10 @@ var main =
 	    }
 	  };
 	}
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(9), __webpack_require__(22).setImmediate))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(20), __webpack_require__(33).setImmediate))
 
 /***/ },
-/* 22 */
+/* 33 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var apply = Function.prototype.apply;
@@ -5823,13 +11332,13 @@ var main =
 	};
 
 	// setimmediate attaches itself to the global object
-	__webpack_require__(23);
+	__webpack_require__(34);
 	exports.setImmediate = setImmediate;
 	exports.clearImmediate = clearImmediate;
 
 
 /***/ },
-/* 23 */
+/* 34 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global, process) {(function (global, undefined) {
@@ -6019,10 +11528,10 @@ var main =
 	    attachTo.clearImmediate = clearImmediate;
 	}(typeof self === "undefined" ? typeof global === "undefined" ? this : global : self));
 
-	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(9)))
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(20)))
 
 /***/ },
-/* 24 */
+/* 35 */
 /***/ function(module, exports) {
 
 	/* WEBPACK VAR INJECTION */(function(global) {
@@ -6096,7 +11605,7 @@ var main =
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 25 */
+/* 36 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Copyright Joyent, Inc. and other Node contributors.
@@ -6120,7 +11629,7 @@ var main =
 	// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 	// USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-	var Buffer = __webpack_require__(5).Buffer;
+	var Buffer = __webpack_require__(16).Buffer;
 
 	var isBufferEncoding = Buffer.isEncoding
 	  || function(encoding) {
@@ -6323,7 +11832,7 @@ var main =
 
 
 /***/ },
-/* 26 */
+/* 37 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// a transform stream is a readable/writable stream where you do
@@ -6372,11 +11881,11 @@ var main =
 
 	module.exports = Transform;
 
-	var Duplex = __webpack_require__(20);
+	var Duplex = __webpack_require__(31);
 
 	/*<replacement>*/
-	var util = __webpack_require__(17);
-	util.inherits = __webpack_require__(12);
+	var util = __webpack_require__(28);
+	util.inherits = __webpack_require__(23);
 	/*</replacement>*/
 
 	util.inherits(Transform, Duplex);
@@ -6510,7 +12019,7 @@ var main =
 	}
 
 /***/ },
-/* 27 */
+/* 38 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// a passthrough stream.
@@ -6521,11 +12030,11 @@ var main =
 
 	module.exports = PassThrough;
 
-	var Transform = __webpack_require__(26);
+	var Transform = __webpack_require__(37);
 
 	/*<replacement>*/
-	var util = __webpack_require__(17);
-	util.inherits = __webpack_require__(12);
+	var util = __webpack_require__(28);
+	util.inherits = __webpack_require__(23);
 	/*</replacement>*/
 
 	util.inherits(PassThrough, Transform);
@@ -6541,35 +12050,35 @@ var main =
 	};
 
 /***/ },
-/* 28 */
+/* 39 */
 /***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __webpack_require__(21)
+	module.exports = __webpack_require__(32)
 
 
 /***/ },
-/* 29 */
+/* 40 */
 /***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __webpack_require__(20)
+	module.exports = __webpack_require__(31)
 
 
 /***/ },
-/* 30 */
+/* 41 */
 /***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __webpack_require__(26)
+	module.exports = __webpack_require__(37)
 
 
 /***/ },
-/* 31 */
+/* 42 */
 /***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __webpack_require__(27)
+	module.exports = __webpack_require__(38)
 
 
 /***/ },
-/* 32 */
+/* 43 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global, process) {// Copyright Joyent, Inc. and other Node contributors.
@@ -7097,7 +12606,7 @@ var main =
 	}
 	exports.isPrimitive = isPrimitive;
 
-	exports.isBuffer = __webpack_require__(33);
+	exports.isBuffer = __webpack_require__(44);
 
 	function objectToString(o) {
 	  return Object.prototype.toString.call(o);
@@ -7141,7 +12650,7 @@ var main =
 	 *     prototype.
 	 * @param {function} superCtor Constructor function to inherit prototype from.
 	 */
-	exports.inherits = __webpack_require__(34);
+	exports.inherits = __webpack_require__(45);
 
 	exports._extend = function(origin, add) {
 	  // Don't do anything if add isn't an object
@@ -7159,10 +12668,10 @@ var main =
 	  return Object.prototype.hasOwnProperty.call(obj, prop);
 	}
 
-	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(9)))
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(20)))
 
 /***/ },
-/* 33 */
+/* 44 */
 /***/ function(module, exports) {
 
 	module.exports = function isBuffer(arg) {
@@ -7173,7 +12682,7 @@ var main =
 	}
 
 /***/ },
-/* 34 */
+/* 45 */
 /***/ function(module, exports) {
 
 	if (typeof Object.create === 'function') {
@@ -7202,758 +12711,7 @@ var main =
 
 
 /***/ },
-/* 35 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var Slider = function Slider(slides, startIndex) {
-	  this.slides = slides;
-	  this.activeSlide = startIndex;
-	  this.elem = this.createSlider();
-	};
-
-	Slider.prototype = {
-	  /**
-	   * creates the slider view and appends slides to it
-	   *
-	   * @returns {HTMLElement} complete slider
-	   */
-	  createSlider: function createSlider() {
-	    var sliderView = document.createElement("div");
-	    sliderView.setAttribute('class', 'slider-view');
-
-	    //create index key in slides for use in class naming by index in nav//
-	    for (var i in this.slides) {
-	      this.slides[i].index = i;
-	    }
-	    this.cards = this.evalTemplate('slider-cards-template', this);
-	    this.nav = this.evalTemplate('nav-template', this);
-	    sliderView.appendChild(this.cards);
-	    sliderView.appendChild(this.nav);
-	    this.attachClickHandler(this.nav.children[0].children);
-
-	    return sliderView;
-	  },
-	  evalTemplate: function evalTemplate(templateId, context) {
-	    var mustache = __webpack_require__(36),
-	        templateContent = document.getElementById(templateId).innerHTML,
-	        rendered = mustache.render(templateContent, context);
-
-	    var parser = new DOMParser(),
-	        doc = parser.parseFromString(rendered, "text/html");
-
-	    return doc.body.children[0];
-	  },
-	  attachClickHandler: function attachClickHandler(div) {
-	    var pastActiveSlide = this.activeSlide;
-	    for (var i = 0; i < div.length; i++) {
-	      div[i].onclick = function (event, self) {
-	        var classes = event.target.classList;
-
-	        for (var i in classes) {
-	          if (classes[i].indexOf("-") != -1) {
-	            var currentActiveSlide = parseFloat(classes[i].split("-")[1]);
-	            var pastActiveSlide = storyline.slider.activeSlide;
-	            storyline.slider.moveSlide(currentActiveSlide, pastActiveSlide);
-	            return false;
-	          }
-	        }
-	      };
-	    }
-	  },
-	  setActiveSlide: function setActiveSlide(currentActiveSlide, pastActiveSlide) {
-	    this.activeSlide = currentActiveSlide;
-	    if (this.cards.children[pastActiveSlide].classList.contains('active')) {
-	      this.cards.children[pastActiveSlide].classList.remove('active');
-	      this.nav.children[0].children[pastActiveSlide].classList.remove('active');
-	      storyline.chart.markers[pastActiveSlide].classList.remove('active');
-	    }
-	    this.cards.children[currentActiveSlide].classList.add('active');
-	    this.nav.children[0].children[currentActiveSlide].classList.add('active');
-	    storyline.chart.markers[currentActiveSlide].classList.add('active');
-	  },
-	  //move to storyline, rename to identify marker rows//
-	  highlightRows: function highlightRows() {
-	    var rows = [];
-	    this.slides.map(function (slide) {
-	      rows.push(slide.rowNum);
-	    });
-	    return rows;
-	  },
-	  moveSlide: function moveSlide(index, pastIndex) {
-	    index = index != undefined ? index : this.activeSlide;
-	    pastIndex = pastIndex | 0;
-	    //TODO: animate //
-	    var slide = this.cards.children[index],
-	        margin = slide.offsetWidth - slide.clientWidth;
-
-	    this.cards.style.marginLeft = -1 * (slide.offsetLeft - margin - 20) + "px";
-	    this.setActiveSlide(index, pastIndex);
-	  },
-	  /**
-	   * sets the width of the document
-	   *
-	   * @param w
-	   * @returns {undefined}
-	   */
-	  setWidth: function setWidth(w) {
-	    var MARGIN = 10,
-	        numSlides = this.slides.length;
-
-	    this.cards.style.width = w * numSlides + "px";
-	    this.cards.style.marginLeft = 10 + "px";
-	    for (var i = 0; i < this.cards.children.length; i++) {
-	      var realWidth = w - MARGIN * 2;
-	      this.cards.children[i].style.width = realWidth + "px";
-	      this.cards.children[i].style.border = MARGIN + "px solid white";
-	    }
-	    this.cards.style.opacity = 1;
-	  }
-	};
-
-	module.exports = {
-	  Slider: Slider
-	};
-
-/***/ },
-/* 36 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
-	 * mustache.js - Logic-less {{mustache}} templates with JavaScript
-	 * http://github.com/janl/mustache.js
-	 */
-
-	/*global define: false Mustache: true*/
-
-	(function defineMustache (global, factory) {
-	  if (typeof exports === 'object' && exports && typeof exports.nodeName !== 'string') {
-	    factory(exports); // CommonJS
-	  } else if (true) {
-	    !(__WEBPACK_AMD_DEFINE_ARRAY__ = [exports], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
-	  } else {
-	    global.Mustache = {};
-	    factory(global.Mustache); // script, wsh, asp
-	  }
-	}(this, function mustacheFactory (mustache) {
-
-	  var objectToString = Object.prototype.toString;
-	  var isArray = Array.isArray || function isArrayPolyfill (object) {
-	    return objectToString.call(object) === '[object Array]';
-	  };
-
-	  function isFunction (object) {
-	    return typeof object === 'function';
-	  }
-
-	  /**
-	   * More correct typeof string handling array
-	   * which normally returns typeof 'object'
-	   */
-	  function typeStr (obj) {
-	    return isArray(obj) ? 'array' : typeof obj;
-	  }
-
-	  function escapeRegExp (string) {
-	    return string.replace(/[\-\[\]{}()*+?.,\\\^$|#\s]/g, '\\$&');
-	  }
-
-	  /**
-	   * Null safe way of checking whether or not an object,
-	   * including its prototype, has a given property
-	   */
-	  function hasProperty (obj, propName) {
-	    return obj != null && typeof obj === 'object' && (propName in obj);
-	  }
-
-	  // Workaround for https://issues.apache.org/jira/browse/COUCHDB-577
-	  // See https://github.com/janl/mustache.js/issues/189
-	  var regExpTest = RegExp.prototype.test;
-	  function testRegExp (re, string) {
-	    return regExpTest.call(re, string);
-	  }
-
-	  var nonSpaceRe = /\S/;
-	  function isWhitespace (string) {
-	    return !testRegExp(nonSpaceRe, string);
-	  }
-
-	  var entityMap = {
-	    '&': '&amp;',
-	    '<': '&lt;',
-	    '>': '&gt;',
-	    '"': '&quot;',
-	    "'": '&#39;',
-	    '/': '&#x2F;',
-	    '`': '&#x60;',
-	    '=': '&#x3D;'
-	  };
-
-	  function escapeHtml (string) {
-	    return String(string).replace(/[&<>"'`=\/]/g, function fromEntityMap (s) {
-	      return entityMap[s];
-	    });
-	  }
-
-	  var whiteRe = /\s*/;
-	  var spaceRe = /\s+/;
-	  var equalsRe = /\s*=/;
-	  var curlyRe = /\s*\}/;
-	  var tagRe = /#|\^|\/|>|\{|&|=|!/;
-
-	  /**
-	   * Breaks up the given `template` string into a tree of tokens. If the `tags`
-	   * argument is given here it must be an array with two string values: the
-	   * opening and closing tags used in the template (e.g. [ "<%", "%>" ]). Of
-	   * course, the default is to use mustaches (i.e. mustache.tags).
-	   *
-	   * A token is an array with at least 4 elements. The first element is the
-	   * mustache symbol that was used inside the tag, e.g. "#" or "&". If the tag
-	   * did not contain a symbol (i.e. {{myValue}}) this element is "name". For
-	   * all text that appears outside a symbol this element is "text".
-	   *
-	   * The second element of a token is its "value". For mustache tags this is
-	   * whatever else was inside the tag besides the opening symbol. For text tokens
-	   * this is the text itself.
-	   *
-	   * The third and fourth elements of the token are the start and end indices,
-	   * respectively, of the token in the original template.
-	   *
-	   * Tokens that are the root node of a subtree contain two more elements: 1) an
-	   * array of tokens in the subtree and 2) the index in the original template at
-	   * which the closing tag for that section begins.
-	   */
-	  function parseTemplate (template, tags) {
-	    if (!template)
-	      return [];
-
-	    var sections = [];     // Stack to hold section tokens
-	    var tokens = [];       // Buffer to hold the tokens
-	    var spaces = [];       // Indices of whitespace tokens on the current line
-	    var hasTag = false;    // Is there a {{tag}} on the current line?
-	    var nonSpace = false;  // Is there a non-space char on the current line?
-
-	    // Strips all whitespace tokens array for the current line
-	    // if there was a {{#tag}} on it and otherwise only space.
-	    function stripSpace () {
-	      if (hasTag && !nonSpace) {
-	        while (spaces.length)
-	          delete tokens[spaces.pop()];
-	      } else {
-	        spaces = [];
-	      }
-
-	      hasTag = false;
-	      nonSpace = false;
-	    }
-
-	    var openingTagRe, closingTagRe, closingCurlyRe;
-	    function compileTags (tagsToCompile) {
-	      if (typeof tagsToCompile === 'string')
-	        tagsToCompile = tagsToCompile.split(spaceRe, 2);
-
-	      if (!isArray(tagsToCompile) || tagsToCompile.length !== 2)
-	        throw new Error('Invalid tags: ' + tagsToCompile);
-
-	      openingTagRe = new RegExp(escapeRegExp(tagsToCompile[0]) + '\\s*');
-	      closingTagRe = new RegExp('\\s*' + escapeRegExp(tagsToCompile[1]));
-	      closingCurlyRe = new RegExp('\\s*' + escapeRegExp('}' + tagsToCompile[1]));
-	    }
-
-	    compileTags(tags || mustache.tags);
-
-	    var scanner = new Scanner(template);
-
-	    var start, type, value, chr, token, openSection;
-	    while (!scanner.eos()) {
-	      start = scanner.pos;
-
-	      // Match any text between tags.
-	      value = scanner.scanUntil(openingTagRe);
-
-	      if (value) {
-	        for (var i = 0, valueLength = value.length; i < valueLength; ++i) {
-	          chr = value.charAt(i);
-
-	          if (isWhitespace(chr)) {
-	            spaces.push(tokens.length);
-	          } else {
-	            nonSpace = true;
-	          }
-
-	          tokens.push([ 'text', chr, start, start + 1 ]);
-	          start += 1;
-
-	          // Check for whitespace on the current line.
-	          if (chr === '\n')
-	            stripSpace();
-	        }
-	      }
-
-	      // Match the opening tag.
-	      if (!scanner.scan(openingTagRe))
-	        break;
-
-	      hasTag = true;
-
-	      // Get the tag type.
-	      type = scanner.scan(tagRe) || 'name';
-	      scanner.scan(whiteRe);
-
-	      // Get the tag value.
-	      if (type === '=') {
-	        value = scanner.scanUntil(equalsRe);
-	        scanner.scan(equalsRe);
-	        scanner.scanUntil(closingTagRe);
-	      } else if (type === '{') {
-	        value = scanner.scanUntil(closingCurlyRe);
-	        scanner.scan(curlyRe);
-	        scanner.scanUntil(closingTagRe);
-	        type = '&';
-	      } else {
-	        value = scanner.scanUntil(closingTagRe);
-	      }
-
-	      // Match the closing tag.
-	      if (!scanner.scan(closingTagRe))
-	        throw new Error('Unclosed tag at ' + scanner.pos);
-
-	      token = [ type, value, start, scanner.pos ];
-	      tokens.push(token);
-
-	      if (type === '#' || type === '^') {
-	        sections.push(token);
-	      } else if (type === '/') {
-	        // Check section nesting.
-	        openSection = sections.pop();
-
-	        if (!openSection)
-	          throw new Error('Unopened section "' + value + '" at ' + start);
-
-	        if (openSection[1] !== value)
-	          throw new Error('Unclosed section "' + openSection[1] + '" at ' + start);
-	      } else if (type === 'name' || type === '{' || type === '&') {
-	        nonSpace = true;
-	      } else if (type === '=') {
-	        // Set the tags for the next time around.
-	        compileTags(value);
-	      }
-	    }
-
-	    // Make sure there are no open sections when we're done.
-	    openSection = sections.pop();
-
-	    if (openSection)
-	      throw new Error('Unclosed section "' + openSection[1] + '" at ' + scanner.pos);
-
-	    return nestTokens(squashTokens(tokens));
-	  }
-
-	  /**
-	   * Combines the values of consecutive text tokens in the given `tokens` array
-	   * to a single token.
-	   */
-	  function squashTokens (tokens) {
-	    var squashedTokens = [];
-
-	    var token, lastToken;
-	    for (var i = 0, numTokens = tokens.length; i < numTokens; ++i) {
-	      token = tokens[i];
-
-	      if (token) {
-	        if (token[0] === 'text' && lastToken && lastToken[0] === 'text') {
-	          lastToken[1] += token[1];
-	          lastToken[3] = token[3];
-	        } else {
-	          squashedTokens.push(token);
-	          lastToken = token;
-	        }
-	      }
-	    }
-
-	    return squashedTokens;
-	  }
-
-	  /**
-	   * Forms the given array of `tokens` into a nested tree structure where
-	   * tokens that represent a section have two additional items: 1) an array of
-	   * all tokens that appear in that section and 2) the index in the original
-	   * template that represents the end of that section.
-	   */
-	  function nestTokens (tokens) {
-	    var nestedTokens = [];
-	    var collector = nestedTokens;
-	    var sections = [];
-
-	    var token, section;
-	    for (var i = 0, numTokens = tokens.length; i < numTokens; ++i) {
-	      token = tokens[i];
-
-	      switch (token[0]) {
-	        case '#':
-	        case '^':
-	          collector.push(token);
-	          sections.push(token);
-	          collector = token[4] = [];
-	          break;
-	        case '/':
-	          section = sections.pop();
-	          section[5] = token[2];
-	          collector = sections.length > 0 ? sections[sections.length - 1][4] : nestedTokens;
-	          break;
-	        default:
-	          collector.push(token);
-	      }
-	    }
-
-	    return nestedTokens;
-	  }
-
-	  /**
-	   * A simple string scanner that is used by the template parser to find
-	   * tokens in template strings.
-	   */
-	  function Scanner (string) {
-	    this.string = string;
-	    this.tail = string;
-	    this.pos = 0;
-	  }
-
-	  /**
-	   * Returns `true` if the tail is empty (end of string).
-	   */
-	  Scanner.prototype.eos = function eos () {
-	    return this.tail === '';
-	  };
-
-	  /**
-	   * Tries to match the given regular expression at the current position.
-	   * Returns the matched text if it can match, the empty string otherwise.
-	   */
-	  Scanner.prototype.scan = function scan (re) {
-	    var match = this.tail.match(re);
-
-	    if (!match || match.index !== 0)
-	      return '';
-
-	    var string = match[0];
-
-	    this.tail = this.tail.substring(string.length);
-	    this.pos += string.length;
-
-	    return string;
-	  };
-
-	  /**
-	   * Skips all text until the given regular expression can be matched. Returns
-	   * the skipped string, which is the entire tail if no match can be made.
-	   */
-	  Scanner.prototype.scanUntil = function scanUntil (re) {
-	    var index = this.tail.search(re), match;
-
-	    switch (index) {
-	      case -1:
-	        match = this.tail;
-	        this.tail = '';
-	        break;
-	      case 0:
-	        match = '';
-	        break;
-	      default:
-	        match = this.tail.substring(0, index);
-	        this.tail = this.tail.substring(index);
-	    }
-
-	    this.pos += match.length;
-
-	    return match;
-	  };
-
-	  /**
-	   * Represents a rendering context by wrapping a view object and
-	   * maintaining a reference to the parent context.
-	   */
-	  function Context (view, parentContext) {
-	    this.view = view;
-	    this.cache = { '.': this.view };
-	    this.parent = parentContext;
-	  }
-
-	  /**
-	   * Creates a new context using the given view with this context
-	   * as the parent.
-	   */
-	  Context.prototype.push = function push (view) {
-	    return new Context(view, this);
-	  };
-
-	  /**
-	   * Returns the value of the given name in this context, traversing
-	   * up the context hierarchy if the value is absent in this context's view.
-	   */
-	  Context.prototype.lookup = function lookup (name) {
-	    var cache = this.cache;
-
-	    var value;
-	    if (cache.hasOwnProperty(name)) {
-	      value = cache[name];
-	    } else {
-	      var context = this, names, index, lookupHit = false;
-
-	      while (context) {
-	        if (name.indexOf('.') > 0) {
-	          value = context.view;
-	          names = name.split('.');
-	          index = 0;
-
-	          /**
-	           * Using the dot notion path in `name`, we descend through the
-	           * nested objects.
-	           *
-	           * To be certain that the lookup has been successful, we have to
-	           * check if the last object in the path actually has the property
-	           * we are looking for. We store the result in `lookupHit`.
-	           *
-	           * This is specially necessary for when the value has been set to
-	           * `undefined` and we want to avoid looking up parent contexts.
-	           **/
-	          while (value != null && index < names.length) {
-	            if (index === names.length - 1)
-	              lookupHit = hasProperty(value, names[index]);
-
-	            value = value[names[index++]];
-	          }
-	        } else {
-	          value = context.view[name];
-	          lookupHit = hasProperty(context.view, name);
-	        }
-
-	        if (lookupHit)
-	          break;
-
-	        context = context.parent;
-	      }
-
-	      cache[name] = value;
-	    }
-
-	    if (isFunction(value))
-	      value = value.call(this.view);
-
-	    return value;
-	  };
-
-	  /**
-	   * A Writer knows how to take a stream of tokens and render them to a
-	   * string, given a context. It also maintains a cache of templates to
-	   * avoid the need to parse the same template twice.
-	   */
-	  function Writer () {
-	    this.cache = {};
-	  }
-
-	  /**
-	   * Clears all cached templates in this writer.
-	   */
-	  Writer.prototype.clearCache = function clearCache () {
-	    this.cache = {};
-	  };
-
-	  /**
-	   * Parses and caches the given `template` and returns the array of tokens
-	   * that is generated from the parse.
-	   */
-	  Writer.prototype.parse = function parse (template, tags) {
-	    var cache = this.cache;
-	    var tokens = cache[template];
-
-	    if (tokens == null)
-	      tokens = cache[template] = parseTemplate(template, tags);
-
-	    return tokens;
-	  };
-
-	  /**
-	   * High-level method that is used to render the given `template` with
-	   * the given `view`.
-	   *
-	   * The optional `partials` argument may be an object that contains the
-	   * names and templates of partials that are used in the template. It may
-	   * also be a function that is used to load partial templates on the fly
-	   * that takes a single argument: the name of the partial.
-	   */
-	  Writer.prototype.render = function render (template, view, partials) {
-	    var tokens = this.parse(template);
-	    var context = (view instanceof Context) ? view : new Context(view);
-	    return this.renderTokens(tokens, context, partials, template);
-	  };
-
-	  /**
-	   * Low-level method that renders the given array of `tokens` using
-	   * the given `context` and `partials`.
-	   *
-	   * Note: The `originalTemplate` is only ever used to extract the portion
-	   * of the original template that was contained in a higher-order section.
-	   * If the template doesn't use higher-order sections, this argument may
-	   * be omitted.
-	   */
-	  Writer.prototype.renderTokens = function renderTokens (tokens, context, partials, originalTemplate) {
-	    var buffer = '';
-
-	    var token, symbol, value;
-	    for (var i = 0, numTokens = tokens.length; i < numTokens; ++i) {
-	      value = undefined;
-	      token = tokens[i];
-	      symbol = token[0];
-
-	      if (symbol === '#') value = this.renderSection(token, context, partials, originalTemplate);
-	      else if (symbol === '^') value = this.renderInverted(token, context, partials, originalTemplate);
-	      else if (symbol === '>') value = this.renderPartial(token, context, partials, originalTemplate);
-	      else if (symbol === '&') value = this.unescapedValue(token, context);
-	      else if (symbol === 'name') value = this.escapedValue(token, context);
-	      else if (symbol === 'text') value = this.rawValue(token);
-
-	      if (value !== undefined)
-	        buffer += value;
-	    }
-
-	    return buffer;
-	  };
-
-	  Writer.prototype.renderSection = function renderSection (token, context, partials, originalTemplate) {
-	    var self = this;
-	    var buffer = '';
-	    var value = context.lookup(token[1]);
-
-	    // This function is used to render an arbitrary template
-	    // in the current context by higher-order sections.
-	    function subRender (template) {
-	      return self.render(template, context, partials);
-	    }
-
-	    if (!value) return;
-
-	    if (isArray(value)) {
-	      for (var j = 0, valueLength = value.length; j < valueLength; ++j) {
-	        buffer += this.renderTokens(token[4], context.push(value[j]), partials, originalTemplate);
-	      }
-	    } else if (typeof value === 'object' || typeof value === 'string' || typeof value === 'number') {
-	      buffer += this.renderTokens(token[4], context.push(value), partials, originalTemplate);
-	    } else if (isFunction(value)) {
-	      if (typeof originalTemplate !== 'string')
-	        throw new Error('Cannot use higher-order sections without the original template');
-
-	      // Extract the portion of the original template that the section contains.
-	      value = value.call(context.view, originalTemplate.slice(token[3], token[5]), subRender);
-
-	      if (value != null)
-	        buffer += value;
-	    } else {
-	      buffer += this.renderTokens(token[4], context, partials, originalTemplate);
-	    }
-	    return buffer;
-	  };
-
-	  Writer.prototype.renderInverted = function renderInverted (token, context, partials, originalTemplate) {
-	    var value = context.lookup(token[1]);
-
-	    // Use JavaScript's definition of falsy. Include empty arrays.
-	    // See https://github.com/janl/mustache.js/issues/186
-	    if (!value || (isArray(value) && value.length === 0))
-	      return this.renderTokens(token[4], context, partials, originalTemplate);
-	  };
-
-	  Writer.prototype.renderPartial = function renderPartial (token, context, partials) {
-	    if (!partials) return;
-
-	    var value = isFunction(partials) ? partials(token[1]) : partials[token[1]];
-	    if (value != null)
-	      return this.renderTokens(this.parse(value), context, partials, value);
-	  };
-
-	  Writer.prototype.unescapedValue = function unescapedValue (token, context) {
-	    var value = context.lookup(token[1]);
-	    if (value != null)
-	      return value;
-	  };
-
-	  Writer.prototype.escapedValue = function escapedValue (token, context) {
-	    var value = context.lookup(token[1]);
-	    if (value != null)
-	      return mustache.escape(value);
-	  };
-
-	  Writer.prototype.rawValue = function rawValue (token) {
-	    return token[1];
-	  };
-
-	  mustache.name = 'mustache.js';
-	  mustache.version = '2.3.0';
-	  mustache.tags = [ '{{', '}}' ];
-
-	  // All high-level mustache.* functions use this writer.
-	  var defaultWriter = new Writer();
-
-	  /**
-	   * Clears all cached templates in the default writer.
-	   */
-	  mustache.clearCache = function clearCache () {
-	    return defaultWriter.clearCache();
-	  };
-
-	  /**
-	   * Parses and caches the given template in the default writer and returns the
-	   * array of tokens it contains. Doing this ahead of time avoids the need to
-	   * parse templates on the fly as they are rendered.
-	   */
-	  mustache.parse = function parse (template, tags) {
-	    return defaultWriter.parse(template, tags);
-	  };
-
-	  /**
-	   * Renders the `template` with the given `view` and `partials` using the
-	   * default writer.
-	   */
-	  mustache.render = function render (template, view, partials) {
-	    if (typeof template !== 'string') {
-	      throw new TypeError('Invalid template! Template should be a "string" ' +
-	                          'but "' + typeStr(template) + '" was given as the first ' +
-	                          'argument for mustache#render(template, view, partials)');
-	    }
-
-	    return defaultWriter.render(template, view, partials);
-	  };
-
-	  // This is here for backwards compatibility with 0.4.x.,
-	  /*eslint-disable */ // eslint wants camel cased function name
-	  mustache.to_html = function to_html (template, view, partials, send) {
-	    /*eslint-enable*/
-
-	    var result = mustache.render(template, view, partials);
-
-	    if (isFunction(send)) {
-	      send(result);
-	    } else {
-	      return result;
-	    }
-	  };
-
-	  // Export the escaping function so that the user may override it.
-	  // See https://github.com/janl/mustache.js/issues/244
-	  mustache.escape = escapeHtml;
-
-	  // Export these mainly for testing, but also for advanced usage.
-	  mustache.Scanner = Scanner;
-	  mustache.Context = Context;
-	  mustache.Writer = Writer;
-
-	  return mustache;
-	}));
-
-
-/***/ },
-/* 37 */
+/* 46 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(module) {//! moment.js
@@ -9770,7 +14528,7 @@ var main =
 	            module && module.exports) {
 	        try {
 	            oldLocale = globalLocale._abbr;
-	            __webpack_require__(39)("./" + name);
+	            __webpack_require__(48)("./" + name);
 	            // because defineLocale currently also sets the global locale, we
 	            // want to undo that for lazy loaded locales
 	            getSetGlobalLocale(oldLocale);
@@ -12258,10 +17016,10 @@ var main =
 
 	})));
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(38)(module)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(47)(module)))
 
 /***/ },
-/* 38 */
+/* 47 */
 /***/ function(module, exports) {
 
 	module.exports = function(module) {
@@ -12277,226 +17035,226 @@ var main =
 
 
 /***/ },
-/* 39 */
+/* 48 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var map = {
-		"./af": 40,
-		"./af.js": 40,
-		"./ar": 41,
-		"./ar-dz": 42,
-		"./ar-dz.js": 42,
-		"./ar-ly": 43,
-		"./ar-ly.js": 43,
-		"./ar-ma": 44,
-		"./ar-ma.js": 44,
-		"./ar-sa": 45,
-		"./ar-sa.js": 45,
-		"./ar-tn": 46,
-		"./ar-tn.js": 46,
-		"./ar.js": 41,
-		"./az": 47,
-		"./az.js": 47,
-		"./be": 48,
-		"./be.js": 48,
-		"./bg": 49,
-		"./bg.js": 49,
-		"./bn": 50,
-		"./bn.js": 50,
-		"./bo": 51,
-		"./bo.js": 51,
-		"./br": 52,
-		"./br.js": 52,
-		"./bs": 53,
-		"./bs.js": 53,
-		"./ca": 54,
-		"./ca.js": 54,
-		"./cs": 55,
-		"./cs.js": 55,
-		"./cv": 56,
-		"./cv.js": 56,
-		"./cy": 57,
-		"./cy.js": 57,
-		"./da": 58,
-		"./da.js": 58,
-		"./de": 59,
-		"./de-at": 60,
-		"./de-at.js": 60,
-		"./de.js": 59,
-		"./dv": 61,
-		"./dv.js": 61,
-		"./el": 62,
-		"./el.js": 62,
-		"./en-au": 63,
-		"./en-au.js": 63,
-		"./en-ca": 64,
-		"./en-ca.js": 64,
-		"./en-gb": 65,
-		"./en-gb.js": 65,
-		"./en-ie": 66,
-		"./en-ie.js": 66,
-		"./en-nz": 67,
-		"./en-nz.js": 67,
-		"./eo": 68,
-		"./eo.js": 68,
-		"./es": 69,
-		"./es-do": 70,
-		"./es-do.js": 70,
-		"./es.js": 69,
-		"./et": 71,
-		"./et.js": 71,
-		"./eu": 72,
-		"./eu.js": 72,
-		"./fa": 73,
-		"./fa.js": 73,
-		"./fi": 74,
-		"./fi.js": 74,
-		"./fo": 75,
-		"./fo.js": 75,
-		"./fr": 76,
-		"./fr-ca": 77,
-		"./fr-ca.js": 77,
-		"./fr-ch": 78,
-		"./fr-ch.js": 78,
-		"./fr.js": 76,
-		"./fy": 79,
-		"./fy.js": 79,
-		"./gd": 80,
-		"./gd.js": 80,
-		"./gl": 81,
-		"./gl.js": 81,
-		"./he": 82,
-		"./he.js": 82,
-		"./hi": 83,
-		"./hi.js": 83,
-		"./hr": 84,
-		"./hr.js": 84,
-		"./hu": 85,
-		"./hu.js": 85,
-		"./hy-am": 86,
-		"./hy-am.js": 86,
-		"./id": 87,
-		"./id.js": 87,
-		"./is": 88,
-		"./is.js": 88,
-		"./it": 89,
-		"./it.js": 89,
-		"./ja": 90,
-		"./ja.js": 90,
-		"./jv": 91,
-		"./jv.js": 91,
-		"./ka": 92,
-		"./ka.js": 92,
-		"./kk": 93,
-		"./kk.js": 93,
-		"./km": 94,
-		"./km.js": 94,
-		"./ko": 95,
-		"./ko.js": 95,
-		"./ky": 96,
-		"./ky.js": 96,
-		"./lb": 97,
-		"./lb.js": 97,
-		"./lo": 98,
-		"./lo.js": 98,
-		"./lt": 99,
-		"./lt.js": 99,
-		"./lv": 100,
-		"./lv.js": 100,
-		"./me": 101,
-		"./me.js": 101,
-		"./mi": 102,
-		"./mi.js": 102,
-		"./mk": 103,
-		"./mk.js": 103,
-		"./ml": 104,
-		"./ml.js": 104,
-		"./mr": 105,
-		"./mr.js": 105,
-		"./ms": 106,
-		"./ms-my": 107,
-		"./ms-my.js": 107,
-		"./ms.js": 106,
-		"./my": 108,
-		"./my.js": 108,
-		"./nb": 109,
-		"./nb.js": 109,
-		"./ne": 110,
-		"./ne.js": 110,
-		"./nl": 111,
-		"./nl-be": 112,
-		"./nl-be.js": 112,
-		"./nl.js": 111,
-		"./nn": 113,
-		"./nn.js": 113,
-		"./pa-in": 114,
-		"./pa-in.js": 114,
-		"./pl": 115,
-		"./pl.js": 115,
-		"./pt": 116,
-		"./pt-br": 117,
-		"./pt-br.js": 117,
-		"./pt.js": 116,
-		"./ro": 118,
-		"./ro.js": 118,
-		"./ru": 119,
-		"./ru.js": 119,
-		"./se": 120,
-		"./se.js": 120,
-		"./si": 121,
-		"./si.js": 121,
-		"./sk": 122,
-		"./sk.js": 122,
-		"./sl": 123,
-		"./sl.js": 123,
-		"./sq": 124,
-		"./sq.js": 124,
-		"./sr": 125,
-		"./sr-cyrl": 126,
-		"./sr-cyrl.js": 126,
-		"./sr.js": 125,
-		"./ss": 127,
-		"./ss.js": 127,
-		"./sv": 128,
-		"./sv.js": 128,
-		"./sw": 129,
-		"./sw.js": 129,
-		"./ta": 130,
-		"./ta.js": 130,
-		"./te": 131,
-		"./te.js": 131,
-		"./tet": 132,
-		"./tet.js": 132,
-		"./th": 133,
-		"./th.js": 133,
-		"./tl-ph": 134,
-		"./tl-ph.js": 134,
-		"./tlh": 135,
-		"./tlh.js": 135,
-		"./tr": 136,
-		"./tr.js": 136,
-		"./tzl": 137,
-		"./tzl.js": 137,
-		"./tzm": 138,
-		"./tzm-latn": 139,
-		"./tzm-latn.js": 139,
-		"./tzm.js": 138,
-		"./uk": 140,
-		"./uk.js": 140,
-		"./uz": 141,
-		"./uz.js": 141,
-		"./vi": 142,
-		"./vi.js": 142,
-		"./x-pseudo": 143,
-		"./x-pseudo.js": 143,
-		"./yo": 144,
-		"./yo.js": 144,
-		"./zh-cn": 145,
-		"./zh-cn.js": 145,
-		"./zh-hk": 146,
-		"./zh-hk.js": 146,
-		"./zh-tw": 147,
-		"./zh-tw.js": 147
+		"./af": 49,
+		"./af.js": 49,
+		"./ar": 50,
+		"./ar-dz": 51,
+		"./ar-dz.js": 51,
+		"./ar-ly": 52,
+		"./ar-ly.js": 52,
+		"./ar-ma": 53,
+		"./ar-ma.js": 53,
+		"./ar-sa": 54,
+		"./ar-sa.js": 54,
+		"./ar-tn": 55,
+		"./ar-tn.js": 55,
+		"./ar.js": 50,
+		"./az": 56,
+		"./az.js": 56,
+		"./be": 57,
+		"./be.js": 57,
+		"./bg": 58,
+		"./bg.js": 58,
+		"./bn": 59,
+		"./bn.js": 59,
+		"./bo": 60,
+		"./bo.js": 60,
+		"./br": 61,
+		"./br.js": 61,
+		"./bs": 62,
+		"./bs.js": 62,
+		"./ca": 63,
+		"./ca.js": 63,
+		"./cs": 64,
+		"./cs.js": 64,
+		"./cv": 65,
+		"./cv.js": 65,
+		"./cy": 66,
+		"./cy.js": 66,
+		"./da": 67,
+		"./da.js": 67,
+		"./de": 68,
+		"./de-at": 69,
+		"./de-at.js": 69,
+		"./de.js": 68,
+		"./dv": 70,
+		"./dv.js": 70,
+		"./el": 71,
+		"./el.js": 71,
+		"./en-au": 72,
+		"./en-au.js": 72,
+		"./en-ca": 73,
+		"./en-ca.js": 73,
+		"./en-gb": 74,
+		"./en-gb.js": 74,
+		"./en-ie": 75,
+		"./en-ie.js": 75,
+		"./en-nz": 76,
+		"./en-nz.js": 76,
+		"./eo": 77,
+		"./eo.js": 77,
+		"./es": 78,
+		"./es-do": 79,
+		"./es-do.js": 79,
+		"./es.js": 78,
+		"./et": 80,
+		"./et.js": 80,
+		"./eu": 81,
+		"./eu.js": 81,
+		"./fa": 82,
+		"./fa.js": 82,
+		"./fi": 83,
+		"./fi.js": 83,
+		"./fo": 84,
+		"./fo.js": 84,
+		"./fr": 85,
+		"./fr-ca": 86,
+		"./fr-ca.js": 86,
+		"./fr-ch": 87,
+		"./fr-ch.js": 87,
+		"./fr.js": 85,
+		"./fy": 88,
+		"./fy.js": 88,
+		"./gd": 89,
+		"./gd.js": 89,
+		"./gl": 90,
+		"./gl.js": 90,
+		"./he": 91,
+		"./he.js": 91,
+		"./hi": 92,
+		"./hi.js": 92,
+		"./hr": 93,
+		"./hr.js": 93,
+		"./hu": 94,
+		"./hu.js": 94,
+		"./hy-am": 95,
+		"./hy-am.js": 95,
+		"./id": 96,
+		"./id.js": 96,
+		"./is": 97,
+		"./is.js": 97,
+		"./it": 98,
+		"./it.js": 98,
+		"./ja": 99,
+		"./ja.js": 99,
+		"./jv": 100,
+		"./jv.js": 100,
+		"./ka": 101,
+		"./ka.js": 101,
+		"./kk": 102,
+		"./kk.js": 102,
+		"./km": 103,
+		"./km.js": 103,
+		"./ko": 104,
+		"./ko.js": 104,
+		"./ky": 105,
+		"./ky.js": 105,
+		"./lb": 106,
+		"./lb.js": 106,
+		"./lo": 107,
+		"./lo.js": 107,
+		"./lt": 108,
+		"./lt.js": 108,
+		"./lv": 109,
+		"./lv.js": 109,
+		"./me": 110,
+		"./me.js": 110,
+		"./mi": 111,
+		"./mi.js": 111,
+		"./mk": 112,
+		"./mk.js": 112,
+		"./ml": 113,
+		"./ml.js": 113,
+		"./mr": 114,
+		"./mr.js": 114,
+		"./ms": 115,
+		"./ms-my": 116,
+		"./ms-my.js": 116,
+		"./ms.js": 115,
+		"./my": 117,
+		"./my.js": 117,
+		"./nb": 118,
+		"./nb.js": 118,
+		"./ne": 119,
+		"./ne.js": 119,
+		"./nl": 120,
+		"./nl-be": 121,
+		"./nl-be.js": 121,
+		"./nl.js": 120,
+		"./nn": 122,
+		"./nn.js": 122,
+		"./pa-in": 123,
+		"./pa-in.js": 123,
+		"./pl": 124,
+		"./pl.js": 124,
+		"./pt": 125,
+		"./pt-br": 126,
+		"./pt-br.js": 126,
+		"./pt.js": 125,
+		"./ro": 127,
+		"./ro.js": 127,
+		"./ru": 128,
+		"./ru.js": 128,
+		"./se": 129,
+		"./se.js": 129,
+		"./si": 130,
+		"./si.js": 130,
+		"./sk": 131,
+		"./sk.js": 131,
+		"./sl": 132,
+		"./sl.js": 132,
+		"./sq": 133,
+		"./sq.js": 133,
+		"./sr": 134,
+		"./sr-cyrl": 135,
+		"./sr-cyrl.js": 135,
+		"./sr.js": 134,
+		"./ss": 136,
+		"./ss.js": 136,
+		"./sv": 137,
+		"./sv.js": 137,
+		"./sw": 138,
+		"./sw.js": 138,
+		"./ta": 139,
+		"./ta.js": 139,
+		"./te": 140,
+		"./te.js": 140,
+		"./tet": 141,
+		"./tet.js": 141,
+		"./th": 142,
+		"./th.js": 142,
+		"./tl-ph": 143,
+		"./tl-ph.js": 143,
+		"./tlh": 144,
+		"./tlh.js": 144,
+		"./tr": 145,
+		"./tr.js": 145,
+		"./tzl": 146,
+		"./tzl.js": 146,
+		"./tzm": 147,
+		"./tzm-latn": 148,
+		"./tzm-latn.js": 148,
+		"./tzm.js": 147,
+		"./uk": 149,
+		"./uk.js": 149,
+		"./uz": 150,
+		"./uz.js": 150,
+		"./vi": 151,
+		"./vi.js": 151,
+		"./x-pseudo": 152,
+		"./x-pseudo.js": 152,
+		"./yo": 153,
+		"./yo.js": 153,
+		"./zh-cn": 154,
+		"./zh-cn.js": 154,
+		"./zh-hk": 155,
+		"./zh-hk.js": 155,
+		"./zh-tw": 156,
+		"./zh-tw.js": 156
 	};
 	function webpackContext(req) {
 		return __webpack_require__(webpackContextResolve(req));
@@ -12509,11 +17267,11 @@ var main =
 	};
 	webpackContext.resolve = webpackContextResolve;
 	module.exports = webpackContext;
-	webpackContext.id = 39;
+	webpackContext.id = 48;
 
 
 /***/ },
-/* 40 */
+/* 49 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -12521,7 +17279,7 @@ var main =
 	//! author : Werner Mollentze : https://github.com/wernerm
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -12591,7 +17349,7 @@ var main =
 
 
 /***/ },
-/* 41 */
+/* 50 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -12601,7 +17359,7 @@ var main =
 	//! author : forabi https://github.com/forabi
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -12738,7 +17496,7 @@ var main =
 
 
 /***/ },
-/* 42 */
+/* 51 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -12746,7 +17504,7 @@ var main =
 	//! author : Noureddine LOUAHEDJ : https://github.com/noureddineme
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -12802,7 +17560,7 @@ var main =
 
 
 /***/ },
-/* 43 */
+/* 52 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -12810,7 +17568,7 @@ var main =
 	//! author : Ali Hmer: https://github.com/kikoanis
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -12933,7 +17691,7 @@ var main =
 
 
 /***/ },
-/* 44 */
+/* 53 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -12942,7 +17700,7 @@ var main =
 	//! author : Abdel Said : https://github.com/abdelsaid
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -12998,7 +17756,7 @@ var main =
 
 
 /***/ },
-/* 45 */
+/* 54 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -13006,7 +17764,7 @@ var main =
 	//! author : Suhail Alkowaileet : https://github.com/xsoh
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -13108,7 +17866,7 @@ var main =
 
 
 /***/ },
-/* 46 */
+/* 55 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -13116,7 +17874,7 @@ var main =
 	//! author : Nader Toukabri : https://github.com/naderio
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -13172,7 +17930,7 @@ var main =
 
 
 /***/ },
-/* 47 */
+/* 56 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -13180,7 +17938,7 @@ var main =
 	//! author : topchiyev : https://github.com/topchiyev
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -13282,7 +18040,7 @@ var main =
 
 
 /***/ },
-/* 48 */
+/* 57 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -13292,7 +18050,7 @@ var main =
 	//! Author : Menelion Elensúle : https://github.com/Oire
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -13421,7 +18179,7 @@ var main =
 
 
 /***/ },
-/* 49 */
+/* 58 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -13429,7 +18187,7 @@ var main =
 	//! author : Krasen Borisov : https://github.com/kraz
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -13516,7 +18274,7 @@ var main =
 
 
 /***/ },
-/* 50 */
+/* 59 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -13524,7 +18282,7 @@ var main =
 	//! author : Kaushik Gandhi : https://github.com/kaushikgandhi
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -13640,7 +18398,7 @@ var main =
 
 
 /***/ },
-/* 51 */
+/* 60 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -13648,7 +18406,7 @@ var main =
 	//! author : Thupten N. Chakrishar : https://github.com/vajradog
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -13764,7 +18522,7 @@ var main =
 
 
 /***/ },
-/* 52 */
+/* 61 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -13772,7 +18530,7 @@ var main =
 	//! author : Jean-Baptiste Le Duigou : https://github.com/jbleduigou
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -13877,7 +18635,7 @@ var main =
 
 
 /***/ },
-/* 53 */
+/* 62 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -13886,7 +18644,7 @@ var main =
 	//! based on (hr) translation by Bojan Marković
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -14025,7 +18783,7 @@ var main =
 
 
 /***/ },
-/* 54 */
+/* 63 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -14033,7 +18791,7 @@ var main =
 	//! author : Juan G. Hurtado : https://github.com/juanghurtado
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -14111,7 +18869,7 @@ var main =
 
 
 /***/ },
-/* 55 */
+/* 64 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -14119,7 +18877,7 @@ var main =
 	//! author : petrbela : https://github.com/petrbela
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -14288,7 +19046,7 @@ var main =
 
 
 /***/ },
-/* 56 */
+/* 65 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -14296,7 +19054,7 @@ var main =
 	//! author : Anatoly Mironov : https://github.com/mirontoli
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -14356,7 +19114,7 @@ var main =
 
 
 /***/ },
-/* 57 */
+/* 66 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -14365,7 +19123,7 @@ var main =
 	//! author : https://github.com/ryangreaves
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -14442,7 +19200,7 @@ var main =
 
 
 /***/ },
-/* 58 */
+/* 67 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -14450,7 +19208,7 @@ var main =
 	//! author : Ulrik Nielsen : https://github.com/mrbase
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -14507,7 +19265,7 @@ var main =
 
 
 /***/ },
-/* 59 */
+/* 68 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -14517,7 +19275,7 @@ var main =
 	//! author : Mikolaj Dadela : https://github.com/mik01aj
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -14590,7 +19348,7 @@ var main =
 
 
 /***/ },
-/* 60 */
+/* 69 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -14601,7 +19359,7 @@ var main =
 	//! author : Mikolaj Dadela : https://github.com/mik01aj
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -14674,7 +19432,7 @@ var main =
 
 
 /***/ },
-/* 61 */
+/* 70 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -14682,7 +19440,7 @@ var main =
 	//! author : Jawish Hameed : https://github.com/jawish
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -14779,7 +19537,7 @@ var main =
 
 
 /***/ },
-/* 62 */
+/* 71 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -14787,7 +19545,7 @@ var main =
 	//! author : Aggelos Karalias : https://github.com/mehiel
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -14882,7 +19640,7 @@ var main =
 
 
 /***/ },
-/* 63 */
+/* 72 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -14890,7 +19648,7 @@ var main =
 	//! author : Jared Morse : https://github.com/jarcoal
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -14954,7 +19712,7 @@ var main =
 
 
 /***/ },
-/* 64 */
+/* 73 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -14962,7 +19720,7 @@ var main =
 	//! author : Jonathan Abourbih : https://github.com/jonbca
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -15022,7 +19780,7 @@ var main =
 
 
 /***/ },
-/* 65 */
+/* 74 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -15030,7 +19788,7 @@ var main =
 	//! author : Chris Gedrim : https://github.com/chrisgedrim
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -15094,7 +19852,7 @@ var main =
 
 
 /***/ },
-/* 66 */
+/* 75 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -15102,7 +19860,7 @@ var main =
 	//! author : Chris Cartlidge : https://github.com/chriscartlidge
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -15166,7 +19924,7 @@ var main =
 
 
 /***/ },
-/* 67 */
+/* 76 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -15174,7 +19932,7 @@ var main =
 	//! author : Luke McGregor : https://github.com/lukemcgregor
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -15238,7 +19996,7 @@ var main =
 
 
 /***/ },
-/* 68 */
+/* 77 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -15248,7 +20006,7 @@ var main =
 	//!          Se ne, bonvolu korekti kaj avizi min por ke mi povas lerni!
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -15316,7 +20074,7 @@ var main =
 
 
 /***/ },
-/* 69 */
+/* 78 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -15324,7 +20082,7 @@ var main =
 	//! author : Julio Napurí : https://github.com/julionc
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -15402,14 +20160,14 @@ var main =
 
 
 /***/ },
-/* 70 */
+/* 79 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
 	//! locale : Spanish (Dominican Republic) [es-do]
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -15487,7 +20245,7 @@ var main =
 
 
 /***/ },
-/* 71 */
+/* 80 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -15496,7 +20254,7 @@ var main =
 	//! improvements : Illimar Tambek : https://github.com/ragulka
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -15572,7 +20330,7 @@ var main =
 
 
 /***/ },
-/* 72 */
+/* 81 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -15580,7 +20338,7 @@ var main =
 	//! author : Eneko Illarramendi : https://github.com/eillarra
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -15643,7 +20401,7 @@ var main =
 
 
 /***/ },
-/* 73 */
+/* 82 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -15651,7 +20409,7 @@ var main =
 	//! author : Ebrahim Byagowi : https://github.com/ebraminio
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -15755,7 +20513,7 @@ var main =
 
 
 /***/ },
-/* 74 */
+/* 83 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -15763,7 +20521,7 @@ var main =
 	//! author : Tarmo Aidantausta : https://github.com/bleadof
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -15867,7 +20625,7 @@ var main =
 
 
 /***/ },
-/* 75 */
+/* 84 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -15875,7 +20633,7 @@ var main =
 	//! author : Ragnar Johannesen : https://github.com/ragnar123
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -15932,7 +20690,7 @@ var main =
 
 
 /***/ },
-/* 76 */
+/* 85 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -15940,7 +20698,7 @@ var main =
 	//! author : John Fischer : https://github.com/jfroffice
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -16001,7 +20759,7 @@ var main =
 
 
 /***/ },
-/* 77 */
+/* 86 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -16009,7 +20767,7 @@ var main =
 	//! author : Jonathan Abourbih : https://github.com/jonbca
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -16066,7 +20824,7 @@ var main =
 
 
 /***/ },
-/* 78 */
+/* 87 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -16074,7 +20832,7 @@ var main =
 	//! author : Gaspard Bucher : https://github.com/gaspard
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -16135,7 +20893,7 @@ var main =
 
 
 /***/ },
-/* 79 */
+/* 88 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -16143,7 +20901,7 @@ var main =
 	//! author : Robin van der Vliet : https://github.com/robin0van0der0v
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -16213,7 +20971,7 @@ var main =
 
 
 /***/ },
-/* 80 */
+/* 89 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -16221,7 +20979,7 @@ var main =
 	//! author : Jon Ashdown : https://github.com/jonashdown
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -16294,7 +21052,7 @@ var main =
 
 
 /***/ },
-/* 81 */
+/* 90 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -16302,7 +21060,7 @@ var main =
 	//! author : Juan G. Hurtado : https://github.com/juanghurtado
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -16376,7 +21134,7 @@ var main =
 
 
 /***/ },
-/* 82 */
+/* 91 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -16386,7 +21144,7 @@ var main =
 	//! author : Tal Ater : https://github.com/TalAter
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -16480,7 +21238,7 @@ var main =
 
 
 /***/ },
-/* 83 */
+/* 92 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -16488,7 +21246,7 @@ var main =
 	//! author : Mayank Singhal : https://github.com/mayanksinghal
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -16609,7 +21367,7 @@ var main =
 
 
 /***/ },
-/* 84 */
+/* 93 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -16617,7 +21375,7 @@ var main =
 	//! author : Bojan Marković : https://github.com/bmarkovic
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -16759,7 +21517,7 @@ var main =
 
 
 /***/ },
-/* 85 */
+/* 94 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -16767,7 +21525,7 @@ var main =
 	//! author : Adam Brunner : https://github.com/adambrunner
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -16873,7 +21631,7 @@ var main =
 
 
 /***/ },
-/* 86 */
+/* 95 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -16881,7 +21639,7 @@ var main =
 	//! author : Armendarabyan : https://github.com/armendarabyan
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -16973,7 +21731,7 @@ var main =
 
 
 /***/ },
-/* 87 */
+/* 96 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -16982,7 +21740,7 @@ var main =
 	//! reference: http://id.wikisource.org/wiki/Pedoman_Umum_Ejaan_Bahasa_Indonesia_yang_Disempurnakan
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -17061,7 +21819,7 @@ var main =
 
 
 /***/ },
-/* 88 */
+/* 97 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -17069,7 +21827,7 @@ var main =
 	//! author : Hinrik Örn Sigurðsson : https://github.com/hinrik
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -17193,7 +21951,7 @@ var main =
 
 
 /***/ },
-/* 89 */
+/* 98 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -17202,7 +21960,7 @@ var main =
 	//! author: Mattia Larentis: https://github.com/nostalgiaz
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -17268,7 +22026,7 @@ var main =
 
 
 /***/ },
-/* 90 */
+/* 99 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -17276,7 +22034,7 @@ var main =
 	//! author : LI Long : https://github.com/baryon
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -17349,7 +22107,7 @@ var main =
 
 
 /***/ },
-/* 91 */
+/* 100 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -17358,7 +22116,7 @@ var main =
 	//! reference: http://jv.wikipedia.org/wiki/Basa_Jawa
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -17437,7 +22195,7 @@ var main =
 
 
 /***/ },
-/* 92 */
+/* 101 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -17445,7 +22203,7 @@ var main =
 	//! author : Irakli Janiashvili : https://github.com/irakli-janiashvili
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -17531,7 +22289,7 @@ var main =
 
 
 /***/ },
-/* 93 */
+/* 102 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -17539,7 +22297,7 @@ var main =
 	//! authors : Nurlan Rakhimzhanov : https://github.com/nurlan
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -17623,7 +22381,7 @@ var main =
 
 
 /***/ },
-/* 94 */
+/* 103 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -17631,7 +22389,7 @@ var main =
 	//! author : Kruy Vanna : https://github.com/kruyvanna
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -17686,7 +22444,7 @@ var main =
 
 
 /***/ },
-/* 95 */
+/* 104 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -17695,7 +22453,7 @@ var main =
 	//! author : Jeeeyul Lee <jeeeyul@gmail.com>
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -17756,7 +22514,7 @@ var main =
 
 
 /***/ },
-/* 96 */
+/* 105 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -17764,7 +22522,7 @@ var main =
 	//! author : Chyngyz Arystan uulu : https://github.com/chyngyz
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -17849,7 +22607,7 @@ var main =
 
 
 /***/ },
-/* 97 */
+/* 106 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -17858,7 +22616,7 @@ var main =
 	//! author : David Raison : https://github.com/kwisatz
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -17991,7 +22749,7 @@ var main =
 
 
 /***/ },
-/* 98 */
+/* 107 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -17999,7 +22757,7 @@ var main =
 	//! author : Ryan Hart : https://github.com/ryanhart2
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -18066,7 +22824,7 @@ var main =
 
 
 /***/ },
-/* 99 */
+/* 108 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -18074,7 +22832,7 @@ var main =
 	//! author : Mindaugas Mozūras : https://github.com/mmozuras
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -18188,7 +22946,7 @@ var main =
 
 
 /***/ },
-/* 100 */
+/* 109 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -18197,7 +22955,7 @@ var main =
 	//! author : Jānis Elmeris : https://github.com/JanisE
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -18290,7 +23048,7 @@ var main =
 
 
 /***/ },
-/* 101 */
+/* 110 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -18298,7 +23056,7 @@ var main =
 	//! author : Miodrag Nikač <miodrag@restartit.me> : https://github.com/miodragnikac
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -18406,7 +23164,7 @@ var main =
 
 
 /***/ },
-/* 102 */
+/* 111 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -18414,7 +23172,7 @@ var main =
 	//! author : John Corrigan <robbiecloset@gmail.com> : https://github.com/johnideal
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -18475,7 +23233,7 @@ var main =
 
 
 /***/ },
-/* 103 */
+/* 112 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -18483,7 +23241,7 @@ var main =
 	//! author : Borislav Mickov : https://github.com/B0k0
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -18570,7 +23328,7 @@ var main =
 
 
 /***/ },
-/* 104 */
+/* 113 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -18578,7 +23336,7 @@ var main =
 	//! author : Floyd Pink : https://github.com/floydpink
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -18656,7 +23414,7 @@ var main =
 
 
 /***/ },
-/* 105 */
+/* 114 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -18665,7 +23423,7 @@ var main =
 	//! author : Vivek Athalye : https://github.com/vnathalye
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -18820,7 +23578,7 @@ var main =
 
 
 /***/ },
-/* 106 */
+/* 115 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -18828,7 +23586,7 @@ var main =
 	//! author : Weldan Jamili : https://github.com/weldan
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -18907,7 +23665,7 @@ var main =
 
 
 /***/ },
-/* 107 */
+/* 116 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -18916,7 +23674,7 @@ var main =
 	//! author : Weldan Jamili : https://github.com/weldan
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -18995,7 +23753,7 @@ var main =
 
 
 /***/ },
-/* 108 */
+/* 117 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -19005,7 +23763,7 @@ var main =
 	//! author : Tin Aung Lin : https://github.com/thanyawzinmin
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -19096,7 +23854,7 @@ var main =
 
 
 /***/ },
-/* 109 */
+/* 118 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -19105,7 +23863,7 @@ var main =
 	//!           Sigurd Gartmann : https://github.com/sigurdga
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -19164,7 +23922,7 @@ var main =
 
 
 /***/ },
-/* 110 */
+/* 119 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -19172,7 +23930,7 @@ var main =
 	//! author : suvash : https://github.com/suvash
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -19292,7 +24050,7 @@ var main =
 
 
 /***/ },
-/* 111 */
+/* 120 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -19301,7 +24059,7 @@ var main =
 	//! author : Jacob Middag : https://github.com/middagj
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -19383,7 +24141,7 @@ var main =
 
 
 /***/ },
-/* 112 */
+/* 121 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -19392,7 +24150,7 @@ var main =
 	//! author : Jacob Middag : https://github.com/middagj
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -19474,7 +24232,7 @@ var main =
 
 
 /***/ },
-/* 113 */
+/* 122 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -19482,7 +24240,7 @@ var main =
 	//! author : https://github.com/mechuwind
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -19539,7 +24297,7 @@ var main =
 
 
 /***/ },
-/* 114 */
+/* 123 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -19547,7 +24305,7 @@ var main =
 	//! author : Harpreet Singh : https://github.com/harpreetkhalsagtbit
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -19668,7 +24426,7 @@ var main =
 
 
 /***/ },
-/* 115 */
+/* 124 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -19676,7 +24434,7 @@ var main =
 	//! author : Rafal Hirsz : https://github.com/evoL
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -19778,7 +24536,7 @@ var main =
 
 
 /***/ },
-/* 116 */
+/* 125 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -19786,7 +24544,7 @@ var main =
 	//! author : Jefferson : https://github.com/jalex79
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -19848,7 +24606,7 @@ var main =
 
 
 /***/ },
-/* 117 */
+/* 126 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -19856,7 +24614,7 @@ var main =
 	//! author : Caio Ribeiro Pereira : https://github.com/caio-ribeiro-pereira
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -19914,7 +24672,7 @@ var main =
 
 
 /***/ },
-/* 118 */
+/* 127 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -19923,7 +24681,7 @@ var main =
 	//! author : Valentin Agachi : https://github.com/avaly
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -19994,7 +24752,7 @@ var main =
 
 
 /***/ },
-/* 119 */
+/* 128 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -20004,7 +24762,7 @@ var main =
 	//! author : Коренберг Марк : https://github.com/socketpair
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -20182,7 +24940,7 @@ var main =
 
 
 /***/ },
-/* 120 */
+/* 129 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -20190,7 +24948,7 @@ var main =
 	//! authors : Bård Rolstad Henriksen : https://github.com/karamell
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -20248,7 +25006,7 @@ var main =
 
 
 /***/ },
-/* 121 */
+/* 130 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -20256,7 +25014,7 @@ var main =
 	//! author : Sampath Sitinamaluwa : https://github.com/sampathsris
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -20324,7 +25082,7 @@ var main =
 
 
 /***/ },
-/* 122 */
+/* 131 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -20333,7 +25091,7 @@ var main =
 	//! based on work of petrbela : https://github.com/petrbela
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -20479,7 +25237,7 @@ var main =
 
 
 /***/ },
-/* 123 */
+/* 132 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -20487,7 +25245,7 @@ var main =
 	//! author : Robert Sedovšek : https://github.com/sedovsek
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -20646,7 +25404,7 @@ var main =
 
 
 /***/ },
-/* 124 */
+/* 133 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -20656,7 +25414,7 @@ var main =
 	//! author : Oerd Cukalla : https://github.com/oerd
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -20721,7 +25479,7 @@ var main =
 
 
 /***/ },
-/* 125 */
+/* 134 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -20729,7 +25487,7 @@ var main =
 	//! author : Milan Janačković<milanjanackovic@gmail.com> : https://github.com/milan-j
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -20836,7 +25594,7 @@ var main =
 
 
 /***/ },
-/* 126 */
+/* 135 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -20844,7 +25602,7 @@ var main =
 	//! author : Milan Janačković<milanjanackovic@gmail.com> : https://github.com/milan-j
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -20951,7 +25709,7 @@ var main =
 
 
 /***/ },
-/* 127 */
+/* 136 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -20959,7 +25717,7 @@ var main =
 	//! author : Nicolai Davies<mail@nicolai.io> : https://github.com/nicolaidavies
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -21045,7 +25803,7 @@ var main =
 
 
 /***/ },
-/* 128 */
+/* 137 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -21053,7 +25811,7 @@ var main =
 	//! author : Jens Alm : https://github.com/ulmus
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -21119,7 +25877,7 @@ var main =
 
 
 /***/ },
-/* 129 */
+/* 138 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -21127,7 +25885,7 @@ var main =
 	//! author : Fahad Kassim : https://github.com/fadsel
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -21183,7 +25941,7 @@ var main =
 
 
 /***/ },
-/* 130 */
+/* 139 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -21191,7 +25949,7 @@ var main =
 	//! author : Arjunkumar Krishnamoorthy : https://github.com/tk120404
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -21318,7 +26076,7 @@ var main =
 
 
 /***/ },
-/* 131 */
+/* 140 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -21326,7 +26084,7 @@ var main =
 	//! author : Krishna Chaitanya Thota : https://github.com/kcthota
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -21412,7 +26170,7 @@ var main =
 
 
 /***/ },
-/* 132 */
+/* 141 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -21421,7 +26179,7 @@ var main =
 	//! author : Onorio De J. Afonso : https://github.com/marobo
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -21485,7 +26243,7 @@ var main =
 
 
 /***/ },
-/* 133 */
+/* 142 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -21493,7 +26251,7 @@ var main =
 	//! author : Kridsada Thanabulpong : https://github.com/sirn
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -21557,7 +26315,7 @@ var main =
 
 
 /***/ },
-/* 134 */
+/* 143 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -21565,7 +26323,7 @@ var main =
 	//! author : Dan Hagman : https://github.com/hagmandan
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -21624,7 +26382,7 @@ var main =
 
 
 /***/ },
-/* 135 */
+/* 144 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -21632,7 +26390,7 @@ var main =
 	//! author : Dominika Kruk : https://github.com/amaranthrose
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -21749,7 +26507,7 @@ var main =
 
 
 /***/ },
-/* 136 */
+/* 145 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -21758,7 +26516,7 @@ var main =
 	//!           Burak Yiğit Kaya: https://github.com/BYK
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -21844,7 +26602,7 @@ var main =
 
 
 /***/ },
-/* 137 */
+/* 146 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -21853,7 +26611,7 @@ var main =
 	//! author : Iustì Canun
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -21940,7 +26698,7 @@ var main =
 
 
 /***/ },
-/* 138 */
+/* 147 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -21948,7 +26706,7 @@ var main =
 	//! author : Abdel Said : https://github.com/abdelsaid
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -22003,7 +26761,7 @@ var main =
 
 
 /***/ },
-/* 139 */
+/* 148 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -22011,7 +26769,7 @@ var main =
 	//! author : Abdel Said : https://github.com/abdelsaid
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -22066,7 +26824,7 @@ var main =
 
 
 /***/ },
-/* 140 */
+/* 149 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -22075,7 +26833,7 @@ var main =
 	//! Author : Menelion Elensúle : https://github.com/Oire
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -22217,7 +26975,7 @@ var main =
 
 
 /***/ },
-/* 141 */
+/* 150 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -22225,7 +26983,7 @@ var main =
 	//! author : Sardor Muminov : https://github.com/muminoff
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -22280,7 +27038,7 @@ var main =
 
 
 /***/ },
-/* 142 */
+/* 151 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -22288,7 +27046,7 @@ var main =
 	//! author : Bang Nguyen : https://github.com/bangnk
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -22364,7 +27122,7 @@ var main =
 
 
 /***/ },
-/* 143 */
+/* 152 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -22372,7 +27130,7 @@ var main =
 	//! author : Andrew Hood : https://github.com/andrewhood125
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -22437,7 +27195,7 @@ var main =
 
 
 /***/ },
-/* 144 */
+/* 153 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -22445,7 +27203,7 @@ var main =
 	//! author : Atolagbe Abisoye : https://github.com/andela-batolagbe
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -22502,7 +27260,7 @@ var main =
 
 
 /***/ },
-/* 145 */
+/* 154 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -22511,7 +27269,7 @@ var main =
 	//! author : Zeno Zeng : https://github.com/zenozeng
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -22634,7 +27392,7 @@ var main =
 
 
 /***/ },
-/* 146 */
+/* 155 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -22644,7 +27402,7 @@ var main =
 	//! author : Konstantin : https://github.com/skfd
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -22744,7 +27502,7 @@ var main =
 
 
 /***/ },
-/* 147 */
+/* 156 */
 /***/ function(module, exports, __webpack_require__) {
 
 	//! moment.js locale configuration
@@ -22753,7 +27511,7 @@ var main =
 	//! author : Chris Lam : https://github.com/hehachris
 
 	;(function (global, factory) {
-	    true ? factory(__webpack_require__(37)) :
+	    true ? factory(__webpack_require__(46)) :
 	   typeof define === 'function' && define.amd ? define(['../moment'], factory) :
 	   factory(global.moment)
 	}(this, (function (moment) { 'use strict';
@@ -22851,6 +27609,3940 @@ var main =
 
 	})));
 
+
+/***/ },
+/* 157 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var Hammer = __webpack_require__(158);
+
+	var Slider = function Slider(slides, startIndex, height) {
+	  this.activeCard = startIndex;
+	  this.slides = slides;
+	  this.MARGIN = 10;
+	  this.height = height;
+	  this.createSlider();
+	  this.slideCard();
+	};
+
+	Slider.prototype = {
+	  createSlider: function createSlider() {
+	    //create index key in slides for use in class naming by index in nav//
+	    //mustache should have something about iterating over index//
+	    for (var i in this.slides) {
+	      this.slides[i].index = i;
+	    }
+	    this.cards = this.renderTemplate('slider-cards-template', this);
+	    this.nav = this.renderTemplate('nav-template', this);
+	    this.elem = this.createSliderView();
+	    this.attachClickHandler(this.nav.children[0].children);
+	  },
+	  /**
+	   * creates the slider view and appends slides to it
+	   *
+	   * @returns {HTMLElement} complete slider
+	   */
+	  createSliderView: function createSliderView() {
+	    var sliderView = document.createElement("div");
+	    sliderView.setAttribute('class', 'slider-view');
+	    sliderView.style.height = this.height + "px";
+
+	    sliderView.appendChild(this.cards);
+	    sliderView.appendChild(this.nav);
+
+	    return sliderView;
+	  },
+	  renderTemplate: function renderTemplate(templateId, context) {
+	    var mustache = __webpack_require__(159),
+	        templateContent = document.getElementById(templateId).innerHTML,
+	        rendered = mustache.render(templateContent, context);
+
+	    var parser = new DOMParser(),
+	        doc = parser.parseFromString(rendered, "text/html");
+
+	    return doc.body.children[0];
+	  },
+	  attachClickHandler: function attachClickHandler(div) {
+	    var pastActiveCard = this.activeCard;
+	    for (var i = 0; i < div.length; i++) {
+	      div[i].onclick = function (event, self) {
+	        var classes = event.target.classList;
+
+	        for (var i in classes) {
+	          if (classes[i].indexOf("-") != -1) {
+	            var currentActiveCard = parseFloat(classes[i].split("-")[1]);
+	            var pastActiveCard = storyline.slider.activeCard;
+	            storyline.slider.setTrayPosition(currentActiveCard, pastActiveCard);
+	            return false;
+	          }
+	        }
+	      };
+	    }
+	  },
+	  setActiveCard: function setActiveCard(currentActiveCard, pastActiveCard) {
+	    this.activeCard = currentActiveCard;
+	    if (this.cards.children[pastActiveCard].classList.contains('active')) {
+	      this.cards.children[pastActiveCard].classList.remove('active');
+	      this.nav.children[0].children[pastActiveCard].classList.remove('active');
+	      storyline.chart.markers[pastActiveCard].classList.remove('active');
+	    }
+	    this.cards.children[currentActiveCard].classList.add('active');
+	    this.nav.children[0].children[currentActiveCard].classList.add('active');
+	    storyline.chart.markers[currentActiveCard].classList.add('active');
+	  },
+	  setTrayPosition: function setTrayPosition(index, pastIndex) {
+	    index = index != undefined ? index : this.activeCard;
+	    pastIndex = pastIndex | 0;
+
+	    var card = this.cards.children[index];
+	    this.cards.style.marginLeft = -1 * (card.offsetLeft - this.offset) + "px";
+
+	    this.setActiveCard(index, pastIndex);
+	  },
+	  /**
+	   * sets the width of the document
+	   *
+	   * @param w
+	   * @returns {undefined}
+	   */
+	  setWidth: function setWidth(w) {
+	    if (w <= 480) {
+	      w = w - this.MARGIN * 2;
+	    } else {
+	      w = 500;
+	    }
+	    this.viewportSize = this.cards.parentElement.clientWidth;
+	    this.offset = this.viewportSize / 2 - w / 2 - this.MARGIN;
+	    this.cardwidth = w;
+	    var numSlides = this.slides.length;
+	    this.cards.style.width = w * numSlides + "px";
+	    this.cards.style.marginLeft = this.offset + "px";
+	    for (var i = 0; i < this.cards.children.length; i++) {
+	      this.cards.children[i].style.width = w + "px";
+	      this.cards.children[i].style.border = this.MARGIN + "px solid white";
+	    }
+	  },
+	  slideCard: function slideCard() {
+	    var self = this;
+	    var offset;
+	    var getOffset = function getOffset() {
+	      offset = self.cards.style.marginLeft;
+	      offset = parseInt(offset.split("px")[0], 10);
+	      self.offsets = [self.offset, -(self.cardwidth - self.offset), -(self.cardwidth * 2 - self.offset), -(self.cardwidth * 3 - self.offset), -(self.cardwidth * 4 - self.offset)];
+	      console.log(self.offsets);
+	    };
+	    var onPan = function onPan(ev) {
+	      var delta = offset + ev.deltaX;
+	      var left = self.cardwidth * 4 - self.offset;
+	      if (delta >= -left && delta <= self.offset) {
+	        if (delta <= self.offsets[4]) {
+	          self.setActiveCard(4, self.activeCard);
+	          self.cards.style.marginLeft = self.offsets[4] + "px";
+	        } else if (delta <= self.offsets[3]) {
+	          self.setActiveCard(3, self.activeCard);
+	          self.cards.style.marginLeft = self.offsets[3] + "px";
+	        } else if (delta <= self.offsets[2]) {
+	          self.setActiveCard(2, self.activeCard);
+	          self.cards.style.marginLeft = self.offsets[2] + "px";
+	        } else if (delta <= self.offsets[1]) {
+	          self.setActiveCard(1, self.activeCard);
+	          self.cards.style.marginLeft = self.offsets[1] + "px";
+	        } else if (delta <= self.offsets[0]) {
+	          self.setActiveCard(0, self.activeCard);
+	          self.cards.style.marginLeft = self.offsets[0] + "px";
+	        }
+	      }
+	    };
+
+	    var createHammer = function createHammer(v) {
+	      var mc = new Hammer.Manager(v, {});
+	      mc.add(new Hammer.Pan({
+	        direction: Hammer.DIRECTION_HORIZONTAL,
+	        threshold: 10
+	      }));
+	      mc.on('panstart', getOffset);
+	      mc.on('panleft', onPan);
+	      mc.on('panright', onPan);
+	      mc.on('panend');
+	    };
+
+	    Array.prototype.map.call(this.cards.children, function (content) {
+	      content = content.children[0];
+	      createHammer(content);
+	    });
+	  }
+	};
+
+	module.exports = {
+	  Slider: Slider
+	};
+
+/***/ },
+/* 158 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;/*! Hammer.JS - v2.0.7 - 2016-04-22
+	 * http://hammerjs.github.io/
+	 *
+	 * Copyright (c) 2016 Jorik Tangelder;
+	 * Licensed under the MIT license */
+	(function(window, document, exportName, undefined) {
+	  'use strict';
+
+	var VENDOR_PREFIXES = ['', 'webkit', 'Moz', 'MS', 'ms', 'o'];
+	var TEST_ELEMENT = document.createElement('div');
+
+	var TYPE_FUNCTION = 'function';
+
+	var round = Math.round;
+	var abs = Math.abs;
+	var now = Date.now;
+
+	/**
+	 * set a timeout with a given scope
+	 * @param {Function} fn
+	 * @param {Number} timeout
+	 * @param {Object} context
+	 * @returns {number}
+	 */
+	function setTimeoutContext(fn, timeout, context) {
+	    return setTimeout(bindFn(fn, context), timeout);
+	}
+
+	/**
+	 * if the argument is an array, we want to execute the fn on each entry
+	 * if it aint an array we don't want to do a thing.
+	 * this is used by all the methods that accept a single and array argument.
+	 * @param {*|Array} arg
+	 * @param {String} fn
+	 * @param {Object} [context]
+	 * @returns {Boolean}
+	 */
+	function invokeArrayArg(arg, fn, context) {
+	    if (Array.isArray(arg)) {
+	        each(arg, context[fn], context);
+	        return true;
+	    }
+	    return false;
+	}
+
+	/**
+	 * walk objects and arrays
+	 * @param {Object} obj
+	 * @param {Function} iterator
+	 * @param {Object} context
+	 */
+	function each(obj, iterator, context) {
+	    var i;
+
+	    if (!obj) {
+	        return;
+	    }
+
+	    if (obj.forEach) {
+	        obj.forEach(iterator, context);
+	    } else if (obj.length !== undefined) {
+	        i = 0;
+	        while (i < obj.length) {
+	            iterator.call(context, obj[i], i, obj);
+	            i++;
+	        }
+	    } else {
+	        for (i in obj) {
+	            obj.hasOwnProperty(i) && iterator.call(context, obj[i], i, obj);
+	        }
+	    }
+	}
+
+	/**
+	 * wrap a method with a deprecation warning and stack trace
+	 * @param {Function} method
+	 * @param {String} name
+	 * @param {String} message
+	 * @returns {Function} A new function wrapping the supplied method.
+	 */
+	function deprecate(method, name, message) {
+	    var deprecationMessage = 'DEPRECATED METHOD: ' + name + '\n' + message + ' AT \n';
+	    return function() {
+	        var e = new Error('get-stack-trace');
+	        var stack = e && e.stack ? e.stack.replace(/^[^\(]+?[\n$]/gm, '')
+	            .replace(/^\s+at\s+/gm, '')
+	            .replace(/^Object.<anonymous>\s*\(/gm, '{anonymous}()@') : 'Unknown Stack Trace';
+
+	        var log = window.console && (window.console.warn || window.console.log);
+	        if (log) {
+	            log.call(window.console, deprecationMessage, stack);
+	        }
+	        return method.apply(this, arguments);
+	    };
+	}
+
+	/**
+	 * extend object.
+	 * means that properties in dest will be overwritten by the ones in src.
+	 * @param {Object} target
+	 * @param {...Object} objects_to_assign
+	 * @returns {Object} target
+	 */
+	var assign;
+	if (typeof Object.assign !== 'function') {
+	    assign = function assign(target) {
+	        if (target === undefined || target === null) {
+	            throw new TypeError('Cannot convert undefined or null to object');
+	        }
+
+	        var output = Object(target);
+	        for (var index = 1; index < arguments.length; index++) {
+	            var source = arguments[index];
+	            if (source !== undefined && source !== null) {
+	                for (var nextKey in source) {
+	                    if (source.hasOwnProperty(nextKey)) {
+	                        output[nextKey] = source[nextKey];
+	                    }
+	                }
+	            }
+	        }
+	        return output;
+	    };
+	} else {
+	    assign = Object.assign;
+	}
+
+	/**
+	 * extend object.
+	 * means that properties in dest will be overwritten by the ones in src.
+	 * @param {Object} dest
+	 * @param {Object} src
+	 * @param {Boolean} [merge=false]
+	 * @returns {Object} dest
+	 */
+	var extend = deprecate(function extend(dest, src, merge) {
+	    var keys = Object.keys(src);
+	    var i = 0;
+	    while (i < keys.length) {
+	        if (!merge || (merge && dest[keys[i]] === undefined)) {
+	            dest[keys[i]] = src[keys[i]];
+	        }
+	        i++;
+	    }
+	    return dest;
+	}, 'extend', 'Use `assign`.');
+
+	/**
+	 * merge the values from src in the dest.
+	 * means that properties that exist in dest will not be overwritten by src
+	 * @param {Object} dest
+	 * @param {Object} src
+	 * @returns {Object} dest
+	 */
+	var merge = deprecate(function merge(dest, src) {
+	    return extend(dest, src, true);
+	}, 'merge', 'Use `assign`.');
+
+	/**
+	 * simple class inheritance
+	 * @param {Function} child
+	 * @param {Function} base
+	 * @param {Object} [properties]
+	 */
+	function inherit(child, base, properties) {
+	    var baseP = base.prototype,
+	        childP;
+
+	    childP = child.prototype = Object.create(baseP);
+	    childP.constructor = child;
+	    childP._super = baseP;
+
+	    if (properties) {
+	        assign(childP, properties);
+	    }
+	}
+
+	/**
+	 * simple function bind
+	 * @param {Function} fn
+	 * @param {Object} context
+	 * @returns {Function}
+	 */
+	function bindFn(fn, context) {
+	    return function boundFn() {
+	        return fn.apply(context, arguments);
+	    };
+	}
+
+	/**
+	 * let a boolean value also be a function that must return a boolean
+	 * this first item in args will be used as the context
+	 * @param {Boolean|Function} val
+	 * @param {Array} [args]
+	 * @returns {Boolean}
+	 */
+	function boolOrFn(val, args) {
+	    if (typeof val == TYPE_FUNCTION) {
+	        return val.apply(args ? args[0] || undefined : undefined, args);
+	    }
+	    return val;
+	}
+
+	/**
+	 * use the val2 when val1 is undefined
+	 * @param {*} val1
+	 * @param {*} val2
+	 * @returns {*}
+	 */
+	function ifUndefined(val1, val2) {
+	    return (val1 === undefined) ? val2 : val1;
+	}
+
+	/**
+	 * addEventListener with multiple events at once
+	 * @param {EventTarget} target
+	 * @param {String} types
+	 * @param {Function} handler
+	 */
+	function addEventListeners(target, types, handler) {
+	    each(splitStr(types), function(type) {
+	        target.addEventListener(type, handler, false);
+	    });
+	}
+
+	/**
+	 * removeEventListener with multiple events at once
+	 * @param {EventTarget} target
+	 * @param {String} types
+	 * @param {Function} handler
+	 */
+	function removeEventListeners(target, types, handler) {
+	    each(splitStr(types), function(type) {
+	        target.removeEventListener(type, handler, false);
+	    });
+	}
+
+	/**
+	 * find if a node is in the given parent
+	 * @method hasParent
+	 * @param {HTMLElement} node
+	 * @param {HTMLElement} parent
+	 * @return {Boolean} found
+	 */
+	function hasParent(node, parent) {
+	    while (node) {
+	        if (node == parent) {
+	            return true;
+	        }
+	        node = node.parentNode;
+	    }
+	    return false;
+	}
+
+	/**
+	 * small indexOf wrapper
+	 * @param {String} str
+	 * @param {String} find
+	 * @returns {Boolean} found
+	 */
+	function inStr(str, find) {
+	    return str.indexOf(find) > -1;
+	}
+
+	/**
+	 * split string on whitespace
+	 * @param {String} str
+	 * @returns {Array} words
+	 */
+	function splitStr(str) {
+	    return str.trim().split(/\s+/g);
+	}
+
+	/**
+	 * find if a array contains the object using indexOf or a simple polyFill
+	 * @param {Array} src
+	 * @param {String} find
+	 * @param {String} [findByKey]
+	 * @return {Boolean|Number} false when not found, or the index
+	 */
+	function inArray(src, find, findByKey) {
+	    if (src.indexOf && !findByKey) {
+	        return src.indexOf(find);
+	    } else {
+	        var i = 0;
+	        while (i < src.length) {
+	            if ((findByKey && src[i][findByKey] == find) || (!findByKey && src[i] === find)) {
+	                return i;
+	            }
+	            i++;
+	        }
+	        return -1;
+	    }
+	}
+
+	/**
+	 * convert array-like objects to real arrays
+	 * @param {Object} obj
+	 * @returns {Array}
+	 */
+	function toArray(obj) {
+	    return Array.prototype.slice.call(obj, 0);
+	}
+
+	/**
+	 * unique array with objects based on a key (like 'id') or just by the array's value
+	 * @param {Array} src [{id:1},{id:2},{id:1}]
+	 * @param {String} [key]
+	 * @param {Boolean} [sort=False]
+	 * @returns {Array} [{id:1},{id:2}]
+	 */
+	function uniqueArray(src, key, sort) {
+	    var results = [];
+	    var values = [];
+	    var i = 0;
+
+	    while (i < src.length) {
+	        var val = key ? src[i][key] : src[i];
+	        if (inArray(values, val) < 0) {
+	            results.push(src[i]);
+	        }
+	        values[i] = val;
+	        i++;
+	    }
+
+	    if (sort) {
+	        if (!key) {
+	            results = results.sort();
+	        } else {
+	            results = results.sort(function sortUniqueArray(a, b) {
+	                return a[key] > b[key];
+	            });
+	        }
+	    }
+
+	    return results;
+	}
+
+	/**
+	 * get the prefixed property
+	 * @param {Object} obj
+	 * @param {String} property
+	 * @returns {String|Undefined} prefixed
+	 */
+	function prefixed(obj, property) {
+	    var prefix, prop;
+	    var camelProp = property[0].toUpperCase() + property.slice(1);
+
+	    var i = 0;
+	    while (i < VENDOR_PREFIXES.length) {
+	        prefix = VENDOR_PREFIXES[i];
+	        prop = (prefix) ? prefix + camelProp : property;
+
+	        if (prop in obj) {
+	            return prop;
+	        }
+	        i++;
+	    }
+	    return undefined;
+	}
+
+	/**
+	 * get a unique id
+	 * @returns {number} uniqueId
+	 */
+	var _uniqueId = 1;
+	function uniqueId() {
+	    return _uniqueId++;
+	}
+
+	/**
+	 * get the window object of an element
+	 * @param {HTMLElement} element
+	 * @returns {DocumentView|Window}
+	 */
+	function getWindowForElement(element) {
+	    var doc = element.ownerDocument || element;
+	    return (doc.defaultView || doc.parentWindow || window);
+	}
+
+	var MOBILE_REGEX = /mobile|tablet|ip(ad|hone|od)|android/i;
+
+	var SUPPORT_TOUCH = ('ontouchstart' in window);
+	var SUPPORT_POINTER_EVENTS = prefixed(window, 'PointerEvent') !== undefined;
+	var SUPPORT_ONLY_TOUCH = SUPPORT_TOUCH && MOBILE_REGEX.test(navigator.userAgent);
+
+	var INPUT_TYPE_TOUCH = 'touch';
+	var INPUT_TYPE_PEN = 'pen';
+	var INPUT_TYPE_MOUSE = 'mouse';
+	var INPUT_TYPE_KINECT = 'kinect';
+
+	var COMPUTE_INTERVAL = 25;
+
+	var INPUT_START = 1;
+	var INPUT_MOVE = 2;
+	var INPUT_END = 4;
+	var INPUT_CANCEL = 8;
+
+	var DIRECTION_NONE = 1;
+	var DIRECTION_LEFT = 2;
+	var DIRECTION_RIGHT = 4;
+	var DIRECTION_UP = 8;
+	var DIRECTION_DOWN = 16;
+
+	var DIRECTION_HORIZONTAL = DIRECTION_LEFT | DIRECTION_RIGHT;
+	var DIRECTION_VERTICAL = DIRECTION_UP | DIRECTION_DOWN;
+	var DIRECTION_ALL = DIRECTION_HORIZONTAL | DIRECTION_VERTICAL;
+
+	var PROPS_XY = ['x', 'y'];
+	var PROPS_CLIENT_XY = ['clientX', 'clientY'];
+
+	/**
+	 * create new input type manager
+	 * @param {Manager} manager
+	 * @param {Function} callback
+	 * @returns {Input}
+	 * @constructor
+	 */
+	function Input(manager, callback) {
+	    var self = this;
+	    this.manager = manager;
+	    this.callback = callback;
+	    this.element = manager.element;
+	    this.target = manager.options.inputTarget;
+
+	    // smaller wrapper around the handler, for the scope and the enabled state of the manager,
+	    // so when disabled the input events are completely bypassed.
+	    this.domHandler = function(ev) {
+	        if (boolOrFn(manager.options.enable, [manager])) {
+	            self.handler(ev);
+	        }
+	    };
+
+	    this.init();
+
+	}
+
+	Input.prototype = {
+	    /**
+	     * should handle the inputEvent data and trigger the callback
+	     * @virtual
+	     */
+	    handler: function() { },
+
+	    /**
+	     * bind the events
+	     */
+	    init: function() {
+	        this.evEl && addEventListeners(this.element, this.evEl, this.domHandler);
+	        this.evTarget && addEventListeners(this.target, this.evTarget, this.domHandler);
+	        this.evWin && addEventListeners(getWindowForElement(this.element), this.evWin, this.domHandler);
+	    },
+
+	    /**
+	     * unbind the events
+	     */
+	    destroy: function() {
+	        this.evEl && removeEventListeners(this.element, this.evEl, this.domHandler);
+	        this.evTarget && removeEventListeners(this.target, this.evTarget, this.domHandler);
+	        this.evWin && removeEventListeners(getWindowForElement(this.element), this.evWin, this.domHandler);
+	    }
+	};
+
+	/**
+	 * create new input type manager
+	 * called by the Manager constructor
+	 * @param {Hammer} manager
+	 * @returns {Input}
+	 */
+	function createInputInstance(manager) {
+	    var Type;
+	    var inputClass = manager.options.inputClass;
+
+	    if (inputClass) {
+	        Type = inputClass;
+	    } else if (SUPPORT_POINTER_EVENTS) {
+	        Type = PointerEventInput;
+	    } else if (SUPPORT_ONLY_TOUCH) {
+	        Type = TouchInput;
+	    } else if (!SUPPORT_TOUCH) {
+	        Type = MouseInput;
+	    } else {
+	        Type = TouchMouseInput;
+	    }
+	    return new (Type)(manager, inputHandler);
+	}
+
+	/**
+	 * handle input events
+	 * @param {Manager} manager
+	 * @param {String} eventType
+	 * @param {Object} input
+	 */
+	function inputHandler(manager, eventType, input) {
+	    var pointersLen = input.pointers.length;
+	    var changedPointersLen = input.changedPointers.length;
+	    var isFirst = (eventType & INPUT_START && (pointersLen - changedPointersLen === 0));
+	    var isFinal = (eventType & (INPUT_END | INPUT_CANCEL) && (pointersLen - changedPointersLen === 0));
+
+	    input.isFirst = !!isFirst;
+	    input.isFinal = !!isFinal;
+
+	    if (isFirst) {
+	        manager.session = {};
+	    }
+
+	    // source event is the normalized value of the domEvents
+	    // like 'touchstart, mouseup, pointerdown'
+	    input.eventType = eventType;
+
+	    // compute scale, rotation etc
+	    computeInputData(manager, input);
+
+	    // emit secret event
+	    manager.emit('hammer.input', input);
+
+	    manager.recognize(input);
+	    manager.session.prevInput = input;
+	}
+
+	/**
+	 * extend the data with some usable properties like scale, rotate, velocity etc
+	 * @param {Object} manager
+	 * @param {Object} input
+	 */
+	function computeInputData(manager, input) {
+	    var session = manager.session;
+	    var pointers = input.pointers;
+	    var pointersLength = pointers.length;
+
+	    // store the first input to calculate the distance and direction
+	    if (!session.firstInput) {
+	        session.firstInput = simpleCloneInputData(input);
+	    }
+
+	    // to compute scale and rotation we need to store the multiple touches
+	    if (pointersLength > 1 && !session.firstMultiple) {
+	        session.firstMultiple = simpleCloneInputData(input);
+	    } else if (pointersLength === 1) {
+	        session.firstMultiple = false;
+	    }
+
+	    var firstInput = session.firstInput;
+	    var firstMultiple = session.firstMultiple;
+	    var offsetCenter = firstMultiple ? firstMultiple.center : firstInput.center;
+
+	    var center = input.center = getCenter(pointers);
+	    input.timeStamp = now();
+	    input.deltaTime = input.timeStamp - firstInput.timeStamp;
+
+	    input.angle = getAngle(offsetCenter, center);
+	    input.distance = getDistance(offsetCenter, center);
+
+	    computeDeltaXY(session, input);
+	    input.offsetDirection = getDirection(input.deltaX, input.deltaY);
+
+	    var overallVelocity = getVelocity(input.deltaTime, input.deltaX, input.deltaY);
+	    input.overallVelocityX = overallVelocity.x;
+	    input.overallVelocityY = overallVelocity.y;
+	    input.overallVelocity = (abs(overallVelocity.x) > abs(overallVelocity.y)) ? overallVelocity.x : overallVelocity.y;
+
+	    input.scale = firstMultiple ? getScale(firstMultiple.pointers, pointers) : 1;
+	    input.rotation = firstMultiple ? getRotation(firstMultiple.pointers, pointers) : 0;
+
+	    input.maxPointers = !session.prevInput ? input.pointers.length : ((input.pointers.length >
+	        session.prevInput.maxPointers) ? input.pointers.length : session.prevInput.maxPointers);
+
+	    computeIntervalInputData(session, input);
+
+	    // find the correct target
+	    var target = manager.element;
+	    if (hasParent(input.srcEvent.target, target)) {
+	        target = input.srcEvent.target;
+	    }
+	    input.target = target;
+	}
+
+	function computeDeltaXY(session, input) {
+	    var center = input.center;
+	    var offset = session.offsetDelta || {};
+	    var prevDelta = session.prevDelta || {};
+	    var prevInput = session.prevInput || {};
+
+	    if (input.eventType === INPUT_START || prevInput.eventType === INPUT_END) {
+	        prevDelta = session.prevDelta = {
+	            x: prevInput.deltaX || 0,
+	            y: prevInput.deltaY || 0
+	        };
+
+	        offset = session.offsetDelta = {
+	            x: center.x,
+	            y: center.y
+	        };
+	    }
+
+	    input.deltaX = prevDelta.x + (center.x - offset.x);
+	    input.deltaY = prevDelta.y + (center.y - offset.y);
+	}
+
+	/**
+	 * velocity is calculated every x ms
+	 * @param {Object} session
+	 * @param {Object} input
+	 */
+	function computeIntervalInputData(session, input) {
+	    var last = session.lastInterval || input,
+	        deltaTime = input.timeStamp - last.timeStamp,
+	        velocity, velocityX, velocityY, direction;
+
+	    if (input.eventType != INPUT_CANCEL && (deltaTime > COMPUTE_INTERVAL || last.velocity === undefined)) {
+	        var deltaX = input.deltaX - last.deltaX;
+	        var deltaY = input.deltaY - last.deltaY;
+
+	        var v = getVelocity(deltaTime, deltaX, deltaY);
+	        velocityX = v.x;
+	        velocityY = v.y;
+	        velocity = (abs(v.x) > abs(v.y)) ? v.x : v.y;
+	        direction = getDirection(deltaX, deltaY);
+
+	        session.lastInterval = input;
+	    } else {
+	        // use latest velocity info if it doesn't overtake a minimum period
+	        velocity = last.velocity;
+	        velocityX = last.velocityX;
+	        velocityY = last.velocityY;
+	        direction = last.direction;
+	    }
+
+	    input.velocity = velocity;
+	    input.velocityX = velocityX;
+	    input.velocityY = velocityY;
+	    input.direction = direction;
+	}
+
+	/**
+	 * create a simple clone from the input used for storage of firstInput and firstMultiple
+	 * @param {Object} input
+	 * @returns {Object} clonedInputData
+	 */
+	function simpleCloneInputData(input) {
+	    // make a simple copy of the pointers because we will get a reference if we don't
+	    // we only need clientXY for the calculations
+	    var pointers = [];
+	    var i = 0;
+	    while (i < input.pointers.length) {
+	        pointers[i] = {
+	            clientX: round(input.pointers[i].clientX),
+	            clientY: round(input.pointers[i].clientY)
+	        };
+	        i++;
+	    }
+
+	    return {
+	        timeStamp: now(),
+	        pointers: pointers,
+	        center: getCenter(pointers),
+	        deltaX: input.deltaX,
+	        deltaY: input.deltaY
+	    };
+	}
+
+	/**
+	 * get the center of all the pointers
+	 * @param {Array} pointers
+	 * @return {Object} center contains `x` and `y` properties
+	 */
+	function getCenter(pointers) {
+	    var pointersLength = pointers.length;
+
+	    // no need to loop when only one touch
+	    if (pointersLength === 1) {
+	        return {
+	            x: round(pointers[0].clientX),
+	            y: round(pointers[0].clientY)
+	        };
+	    }
+
+	    var x = 0, y = 0, i = 0;
+	    while (i < pointersLength) {
+	        x += pointers[i].clientX;
+	        y += pointers[i].clientY;
+	        i++;
+	    }
+
+	    return {
+	        x: round(x / pointersLength),
+	        y: round(y / pointersLength)
+	    };
+	}
+
+	/**
+	 * calculate the velocity between two points. unit is in px per ms.
+	 * @param {Number} deltaTime
+	 * @param {Number} x
+	 * @param {Number} y
+	 * @return {Object} velocity `x` and `y`
+	 */
+	function getVelocity(deltaTime, x, y) {
+	    return {
+	        x: x / deltaTime || 0,
+	        y: y / deltaTime || 0
+	    };
+	}
+
+	/**
+	 * get the direction between two points
+	 * @param {Number} x
+	 * @param {Number} y
+	 * @return {Number} direction
+	 */
+	function getDirection(x, y) {
+	    if (x === y) {
+	        return DIRECTION_NONE;
+	    }
+
+	    if (abs(x) >= abs(y)) {
+	        return x < 0 ? DIRECTION_LEFT : DIRECTION_RIGHT;
+	    }
+	    return y < 0 ? DIRECTION_UP : DIRECTION_DOWN;
+	}
+
+	/**
+	 * calculate the absolute distance between two points
+	 * @param {Object} p1 {x, y}
+	 * @param {Object} p2 {x, y}
+	 * @param {Array} [props] containing x and y keys
+	 * @return {Number} distance
+	 */
+	function getDistance(p1, p2, props) {
+	    if (!props) {
+	        props = PROPS_XY;
+	    }
+	    var x = p2[props[0]] - p1[props[0]],
+	        y = p2[props[1]] - p1[props[1]];
+
+	    return Math.sqrt((x * x) + (y * y));
+	}
+
+	/**
+	 * calculate the angle between two coordinates
+	 * @param {Object} p1
+	 * @param {Object} p2
+	 * @param {Array} [props] containing x and y keys
+	 * @return {Number} angle
+	 */
+	function getAngle(p1, p2, props) {
+	    if (!props) {
+	        props = PROPS_XY;
+	    }
+	    var x = p2[props[0]] - p1[props[0]],
+	        y = p2[props[1]] - p1[props[1]];
+	    return Math.atan2(y, x) * 180 / Math.PI;
+	}
+
+	/**
+	 * calculate the rotation degrees between two pointersets
+	 * @param {Array} start array of pointers
+	 * @param {Array} end array of pointers
+	 * @return {Number} rotation
+	 */
+	function getRotation(start, end) {
+	    return getAngle(end[1], end[0], PROPS_CLIENT_XY) + getAngle(start[1], start[0], PROPS_CLIENT_XY);
+	}
+
+	/**
+	 * calculate the scale factor between two pointersets
+	 * no scale is 1, and goes down to 0 when pinched together, and bigger when pinched out
+	 * @param {Array} start array of pointers
+	 * @param {Array} end array of pointers
+	 * @return {Number} scale
+	 */
+	function getScale(start, end) {
+	    return getDistance(end[0], end[1], PROPS_CLIENT_XY) / getDistance(start[0], start[1], PROPS_CLIENT_XY);
+	}
+
+	var MOUSE_INPUT_MAP = {
+	    mousedown: INPUT_START,
+	    mousemove: INPUT_MOVE,
+	    mouseup: INPUT_END
+	};
+
+	var MOUSE_ELEMENT_EVENTS = 'mousedown';
+	var MOUSE_WINDOW_EVENTS = 'mousemove mouseup';
+
+	/**
+	 * Mouse events input
+	 * @constructor
+	 * @extends Input
+	 */
+	function MouseInput() {
+	    this.evEl = MOUSE_ELEMENT_EVENTS;
+	    this.evWin = MOUSE_WINDOW_EVENTS;
+
+	    this.pressed = false; // mousedown state
+
+	    Input.apply(this, arguments);
+	}
+
+	inherit(MouseInput, Input, {
+	    /**
+	     * handle mouse events
+	     * @param {Object} ev
+	     */
+	    handler: function MEhandler(ev) {
+	        var eventType = MOUSE_INPUT_MAP[ev.type];
+
+	        // on start we want to have the left mouse button down
+	        if (eventType & INPUT_START && ev.button === 0) {
+	            this.pressed = true;
+	        }
+
+	        if (eventType & INPUT_MOVE && ev.which !== 1) {
+	            eventType = INPUT_END;
+	        }
+
+	        // mouse must be down
+	        if (!this.pressed) {
+	            return;
+	        }
+
+	        if (eventType & INPUT_END) {
+	            this.pressed = false;
+	        }
+
+	        this.callback(this.manager, eventType, {
+	            pointers: [ev],
+	            changedPointers: [ev],
+	            pointerType: INPUT_TYPE_MOUSE,
+	            srcEvent: ev
+	        });
+	    }
+	});
+
+	var POINTER_INPUT_MAP = {
+	    pointerdown: INPUT_START,
+	    pointermove: INPUT_MOVE,
+	    pointerup: INPUT_END,
+	    pointercancel: INPUT_CANCEL,
+	    pointerout: INPUT_CANCEL
+	};
+
+	// in IE10 the pointer types is defined as an enum
+	var IE10_POINTER_TYPE_ENUM = {
+	    2: INPUT_TYPE_TOUCH,
+	    3: INPUT_TYPE_PEN,
+	    4: INPUT_TYPE_MOUSE,
+	    5: INPUT_TYPE_KINECT // see https://twitter.com/jacobrossi/status/480596438489890816
+	};
+
+	var POINTER_ELEMENT_EVENTS = 'pointerdown';
+	var POINTER_WINDOW_EVENTS = 'pointermove pointerup pointercancel';
+
+	// IE10 has prefixed support, and case-sensitive
+	if (window.MSPointerEvent && !window.PointerEvent) {
+	    POINTER_ELEMENT_EVENTS = 'MSPointerDown';
+	    POINTER_WINDOW_EVENTS = 'MSPointerMove MSPointerUp MSPointerCancel';
+	}
+
+	/**
+	 * Pointer events input
+	 * @constructor
+	 * @extends Input
+	 */
+	function PointerEventInput() {
+	    this.evEl = POINTER_ELEMENT_EVENTS;
+	    this.evWin = POINTER_WINDOW_EVENTS;
+
+	    Input.apply(this, arguments);
+
+	    this.store = (this.manager.session.pointerEvents = []);
+	}
+
+	inherit(PointerEventInput, Input, {
+	    /**
+	     * handle mouse events
+	     * @param {Object} ev
+	     */
+	    handler: function PEhandler(ev) {
+	        var store = this.store;
+	        var removePointer = false;
+
+	        var eventTypeNormalized = ev.type.toLowerCase().replace('ms', '');
+	        var eventType = POINTER_INPUT_MAP[eventTypeNormalized];
+	        var pointerType = IE10_POINTER_TYPE_ENUM[ev.pointerType] || ev.pointerType;
+
+	        var isTouch = (pointerType == INPUT_TYPE_TOUCH);
+
+	        // get index of the event in the store
+	        var storeIndex = inArray(store, ev.pointerId, 'pointerId');
+
+	        // start and mouse must be down
+	        if (eventType & INPUT_START && (ev.button === 0 || isTouch)) {
+	            if (storeIndex < 0) {
+	                store.push(ev);
+	                storeIndex = store.length - 1;
+	            }
+	        } else if (eventType & (INPUT_END | INPUT_CANCEL)) {
+	            removePointer = true;
+	        }
+
+	        // it not found, so the pointer hasn't been down (so it's probably a hover)
+	        if (storeIndex < 0) {
+	            return;
+	        }
+
+	        // update the event in the store
+	        store[storeIndex] = ev;
+
+	        this.callback(this.manager, eventType, {
+	            pointers: store,
+	            changedPointers: [ev],
+	            pointerType: pointerType,
+	            srcEvent: ev
+	        });
+
+	        if (removePointer) {
+	            // remove from the store
+	            store.splice(storeIndex, 1);
+	        }
+	    }
+	});
+
+	var SINGLE_TOUCH_INPUT_MAP = {
+	    touchstart: INPUT_START,
+	    touchmove: INPUT_MOVE,
+	    touchend: INPUT_END,
+	    touchcancel: INPUT_CANCEL
+	};
+
+	var SINGLE_TOUCH_TARGET_EVENTS = 'touchstart';
+	var SINGLE_TOUCH_WINDOW_EVENTS = 'touchstart touchmove touchend touchcancel';
+
+	/**
+	 * Touch events input
+	 * @constructor
+	 * @extends Input
+	 */
+	function SingleTouchInput() {
+	    this.evTarget = SINGLE_TOUCH_TARGET_EVENTS;
+	    this.evWin = SINGLE_TOUCH_WINDOW_EVENTS;
+	    this.started = false;
+
+	    Input.apply(this, arguments);
+	}
+
+	inherit(SingleTouchInput, Input, {
+	    handler: function TEhandler(ev) {
+	        var type = SINGLE_TOUCH_INPUT_MAP[ev.type];
+
+	        // should we handle the touch events?
+	        if (type === INPUT_START) {
+	            this.started = true;
+	        }
+
+	        if (!this.started) {
+	            return;
+	        }
+
+	        var touches = normalizeSingleTouches.call(this, ev, type);
+
+	        // when done, reset the started state
+	        if (type & (INPUT_END | INPUT_CANCEL) && touches[0].length - touches[1].length === 0) {
+	            this.started = false;
+	        }
+
+	        this.callback(this.manager, type, {
+	            pointers: touches[0],
+	            changedPointers: touches[1],
+	            pointerType: INPUT_TYPE_TOUCH,
+	            srcEvent: ev
+	        });
+	    }
+	});
+
+	/**
+	 * @this {TouchInput}
+	 * @param {Object} ev
+	 * @param {Number} type flag
+	 * @returns {undefined|Array} [all, changed]
+	 */
+	function normalizeSingleTouches(ev, type) {
+	    var all = toArray(ev.touches);
+	    var changed = toArray(ev.changedTouches);
+
+	    if (type & (INPUT_END | INPUT_CANCEL)) {
+	        all = uniqueArray(all.concat(changed), 'identifier', true);
+	    }
+
+	    return [all, changed];
+	}
+
+	var TOUCH_INPUT_MAP = {
+	    touchstart: INPUT_START,
+	    touchmove: INPUT_MOVE,
+	    touchend: INPUT_END,
+	    touchcancel: INPUT_CANCEL
+	};
+
+	var TOUCH_TARGET_EVENTS = 'touchstart touchmove touchend touchcancel';
+
+	/**
+	 * Multi-user touch events input
+	 * @constructor
+	 * @extends Input
+	 */
+	function TouchInput() {
+	    this.evTarget = TOUCH_TARGET_EVENTS;
+	    this.targetIds = {};
+
+	    Input.apply(this, arguments);
+	}
+
+	inherit(TouchInput, Input, {
+	    handler: function MTEhandler(ev) {
+	        var type = TOUCH_INPUT_MAP[ev.type];
+	        var touches = getTouches.call(this, ev, type);
+	        if (!touches) {
+	            return;
+	        }
+
+	        this.callback(this.manager, type, {
+	            pointers: touches[0],
+	            changedPointers: touches[1],
+	            pointerType: INPUT_TYPE_TOUCH,
+	            srcEvent: ev
+	        });
+	    }
+	});
+
+	/**
+	 * @this {TouchInput}
+	 * @param {Object} ev
+	 * @param {Number} type flag
+	 * @returns {undefined|Array} [all, changed]
+	 */
+	function getTouches(ev, type) {
+	    var allTouches = toArray(ev.touches);
+	    var targetIds = this.targetIds;
+
+	    // when there is only one touch, the process can be simplified
+	    if (type & (INPUT_START | INPUT_MOVE) && allTouches.length === 1) {
+	        targetIds[allTouches[0].identifier] = true;
+	        return [allTouches, allTouches];
+	    }
+
+	    var i,
+	        targetTouches,
+	        changedTouches = toArray(ev.changedTouches),
+	        changedTargetTouches = [],
+	        target = this.target;
+
+	    // get target touches from touches
+	    targetTouches = allTouches.filter(function(touch) {
+	        return hasParent(touch.target, target);
+	    });
+
+	    // collect touches
+	    if (type === INPUT_START) {
+	        i = 0;
+	        while (i < targetTouches.length) {
+	            targetIds[targetTouches[i].identifier] = true;
+	            i++;
+	        }
+	    }
+
+	    // filter changed touches to only contain touches that exist in the collected target ids
+	    i = 0;
+	    while (i < changedTouches.length) {
+	        if (targetIds[changedTouches[i].identifier]) {
+	            changedTargetTouches.push(changedTouches[i]);
+	        }
+
+	        // cleanup removed touches
+	        if (type & (INPUT_END | INPUT_CANCEL)) {
+	            delete targetIds[changedTouches[i].identifier];
+	        }
+	        i++;
+	    }
+
+	    if (!changedTargetTouches.length) {
+	        return;
+	    }
+
+	    return [
+	        // merge targetTouches with changedTargetTouches so it contains ALL touches, including 'end' and 'cancel'
+	        uniqueArray(targetTouches.concat(changedTargetTouches), 'identifier', true),
+	        changedTargetTouches
+	    ];
+	}
+
+	/**
+	 * Combined touch and mouse input
+	 *
+	 * Touch has a higher priority then mouse, and while touching no mouse events are allowed.
+	 * This because touch devices also emit mouse events while doing a touch.
+	 *
+	 * @constructor
+	 * @extends Input
+	 */
+
+	var DEDUP_TIMEOUT = 2500;
+	var DEDUP_DISTANCE = 25;
+
+	function TouchMouseInput() {
+	    Input.apply(this, arguments);
+
+	    var handler = bindFn(this.handler, this);
+	    this.touch = new TouchInput(this.manager, handler);
+	    this.mouse = new MouseInput(this.manager, handler);
+
+	    this.primaryTouch = null;
+	    this.lastTouches = [];
+	}
+
+	inherit(TouchMouseInput, Input, {
+	    /**
+	     * handle mouse and touch events
+	     * @param {Hammer} manager
+	     * @param {String} inputEvent
+	     * @param {Object} inputData
+	     */
+	    handler: function TMEhandler(manager, inputEvent, inputData) {
+	        var isTouch = (inputData.pointerType == INPUT_TYPE_TOUCH),
+	            isMouse = (inputData.pointerType == INPUT_TYPE_MOUSE);
+
+	        if (isMouse && inputData.sourceCapabilities && inputData.sourceCapabilities.firesTouchEvents) {
+	            return;
+	        }
+
+	        // when we're in a touch event, record touches to  de-dupe synthetic mouse event
+	        if (isTouch) {
+	            recordTouches.call(this, inputEvent, inputData);
+	        } else if (isMouse && isSyntheticEvent.call(this, inputData)) {
+	            return;
+	        }
+
+	        this.callback(manager, inputEvent, inputData);
+	    },
+
+	    /**
+	     * remove the event listeners
+	     */
+	    destroy: function destroy() {
+	        this.touch.destroy();
+	        this.mouse.destroy();
+	    }
+	});
+
+	function recordTouches(eventType, eventData) {
+	    if (eventType & INPUT_START) {
+	        this.primaryTouch = eventData.changedPointers[0].identifier;
+	        setLastTouch.call(this, eventData);
+	    } else if (eventType & (INPUT_END | INPUT_CANCEL)) {
+	        setLastTouch.call(this, eventData);
+	    }
+	}
+
+	function setLastTouch(eventData) {
+	    var touch = eventData.changedPointers[0];
+
+	    if (touch.identifier === this.primaryTouch) {
+	        var lastTouch = {x: touch.clientX, y: touch.clientY};
+	        this.lastTouches.push(lastTouch);
+	        var lts = this.lastTouches;
+	        var removeLastTouch = function() {
+	            var i = lts.indexOf(lastTouch);
+	            if (i > -1) {
+	                lts.splice(i, 1);
+	            }
+	        };
+	        setTimeout(removeLastTouch, DEDUP_TIMEOUT);
+	    }
+	}
+
+	function isSyntheticEvent(eventData) {
+	    var x = eventData.srcEvent.clientX, y = eventData.srcEvent.clientY;
+	    for (var i = 0; i < this.lastTouches.length; i++) {
+	        var t = this.lastTouches[i];
+	        var dx = Math.abs(x - t.x), dy = Math.abs(y - t.y);
+	        if (dx <= DEDUP_DISTANCE && dy <= DEDUP_DISTANCE) {
+	            return true;
+	        }
+	    }
+	    return false;
+	}
+
+	var PREFIXED_TOUCH_ACTION = prefixed(TEST_ELEMENT.style, 'touchAction');
+	var NATIVE_TOUCH_ACTION = PREFIXED_TOUCH_ACTION !== undefined;
+
+	// magical touchAction value
+	var TOUCH_ACTION_COMPUTE = 'compute';
+	var TOUCH_ACTION_AUTO = 'auto';
+	var TOUCH_ACTION_MANIPULATION = 'manipulation'; // not implemented
+	var TOUCH_ACTION_NONE = 'none';
+	var TOUCH_ACTION_PAN_X = 'pan-x';
+	var TOUCH_ACTION_PAN_Y = 'pan-y';
+	var TOUCH_ACTION_MAP = getTouchActionProps();
+
+	/**
+	 * Touch Action
+	 * sets the touchAction property or uses the js alternative
+	 * @param {Manager} manager
+	 * @param {String} value
+	 * @constructor
+	 */
+	function TouchAction(manager, value) {
+	    this.manager = manager;
+	    this.set(value);
+	}
+
+	TouchAction.prototype = {
+	    /**
+	     * set the touchAction value on the element or enable the polyfill
+	     * @param {String} value
+	     */
+	    set: function(value) {
+	        // find out the touch-action by the event handlers
+	        if (value == TOUCH_ACTION_COMPUTE) {
+	            value = this.compute();
+	        }
+
+	        if (NATIVE_TOUCH_ACTION && this.manager.element.style && TOUCH_ACTION_MAP[value]) {
+	            this.manager.element.style[PREFIXED_TOUCH_ACTION] = value;
+	        }
+	        this.actions = value.toLowerCase().trim();
+	    },
+
+	    /**
+	     * just re-set the touchAction value
+	     */
+	    update: function() {
+	        this.set(this.manager.options.touchAction);
+	    },
+
+	    /**
+	     * compute the value for the touchAction property based on the recognizer's settings
+	     * @returns {String} value
+	     */
+	    compute: function() {
+	        var actions = [];
+	        each(this.manager.recognizers, function(recognizer) {
+	            if (boolOrFn(recognizer.options.enable, [recognizer])) {
+	                actions = actions.concat(recognizer.getTouchAction());
+	            }
+	        });
+	        return cleanTouchActions(actions.join(' '));
+	    },
+
+	    /**
+	     * this method is called on each input cycle and provides the preventing of the browser behavior
+	     * @param {Object} input
+	     */
+	    preventDefaults: function(input) {
+	        var srcEvent = input.srcEvent;
+	        var direction = input.offsetDirection;
+
+	        // if the touch action did prevented once this session
+	        if (this.manager.session.prevented) {
+	            srcEvent.preventDefault();
+	            return;
+	        }
+
+	        var actions = this.actions;
+	        var hasNone = inStr(actions, TOUCH_ACTION_NONE) && !TOUCH_ACTION_MAP[TOUCH_ACTION_NONE];
+	        var hasPanY = inStr(actions, TOUCH_ACTION_PAN_Y) && !TOUCH_ACTION_MAP[TOUCH_ACTION_PAN_Y];
+	        var hasPanX = inStr(actions, TOUCH_ACTION_PAN_X) && !TOUCH_ACTION_MAP[TOUCH_ACTION_PAN_X];
+
+	        if (hasNone) {
+	            //do not prevent defaults if this is a tap gesture
+
+	            var isTapPointer = input.pointers.length === 1;
+	            var isTapMovement = input.distance < 2;
+	            var isTapTouchTime = input.deltaTime < 250;
+
+	            if (isTapPointer && isTapMovement && isTapTouchTime) {
+	                return;
+	            }
+	        }
+
+	        if (hasPanX && hasPanY) {
+	            // `pan-x pan-y` means browser handles all scrolling/panning, do not prevent
+	            return;
+	        }
+
+	        if (hasNone ||
+	            (hasPanY && direction & DIRECTION_HORIZONTAL) ||
+	            (hasPanX && direction & DIRECTION_VERTICAL)) {
+	            return this.preventSrc(srcEvent);
+	        }
+	    },
+
+	    /**
+	     * call preventDefault to prevent the browser's default behavior (scrolling in most cases)
+	     * @param {Object} srcEvent
+	     */
+	    preventSrc: function(srcEvent) {
+	        this.manager.session.prevented = true;
+	        srcEvent.preventDefault();
+	    }
+	};
+
+	/**
+	 * when the touchActions are collected they are not a valid value, so we need to clean things up. *
+	 * @param {String} actions
+	 * @returns {*}
+	 */
+	function cleanTouchActions(actions) {
+	    // none
+	    if (inStr(actions, TOUCH_ACTION_NONE)) {
+	        return TOUCH_ACTION_NONE;
+	    }
+
+	    var hasPanX = inStr(actions, TOUCH_ACTION_PAN_X);
+	    var hasPanY = inStr(actions, TOUCH_ACTION_PAN_Y);
+
+	    // if both pan-x and pan-y are set (different recognizers
+	    // for different directions, e.g. horizontal pan but vertical swipe?)
+	    // we need none (as otherwise with pan-x pan-y combined none of these
+	    // recognizers will work, since the browser would handle all panning
+	    if (hasPanX && hasPanY) {
+	        return TOUCH_ACTION_NONE;
+	    }
+
+	    // pan-x OR pan-y
+	    if (hasPanX || hasPanY) {
+	        return hasPanX ? TOUCH_ACTION_PAN_X : TOUCH_ACTION_PAN_Y;
+	    }
+
+	    // manipulation
+	    if (inStr(actions, TOUCH_ACTION_MANIPULATION)) {
+	        return TOUCH_ACTION_MANIPULATION;
+	    }
+
+	    return TOUCH_ACTION_AUTO;
+	}
+
+	function getTouchActionProps() {
+	    if (!NATIVE_TOUCH_ACTION) {
+	        return false;
+	    }
+	    var touchMap = {};
+	    var cssSupports = window.CSS && window.CSS.supports;
+	    ['auto', 'manipulation', 'pan-y', 'pan-x', 'pan-x pan-y', 'none'].forEach(function(val) {
+
+	        // If css.supports is not supported but there is native touch-action assume it supports
+	        // all values. This is the case for IE 10 and 11.
+	        touchMap[val] = cssSupports ? window.CSS.supports('touch-action', val) : true;
+	    });
+	    return touchMap;
+	}
+
+	/**
+	 * Recognizer flow explained; *
+	 * All recognizers have the initial state of POSSIBLE when a input session starts.
+	 * The definition of a input session is from the first input until the last input, with all it's movement in it. *
+	 * Example session for mouse-input: mousedown -> mousemove -> mouseup
+	 *
+	 * On each recognizing cycle (see Manager.recognize) the .recognize() method is executed
+	 * which determines with state it should be.
+	 *
+	 * If the recognizer has the state FAILED, CANCELLED or RECOGNIZED (equals ENDED), it is reset to
+	 * POSSIBLE to give it another change on the next cycle.
+	 *
+	 *               Possible
+	 *                  |
+	 *            +-----+---------------+
+	 *            |                     |
+	 *      +-----+-----+               |
+	 *      |           |               |
+	 *   Failed      Cancelled          |
+	 *                          +-------+------+
+	 *                          |              |
+	 *                      Recognized       Began
+	 *                                         |
+	 *                                      Changed
+	 *                                         |
+	 *                                  Ended/Recognized
+	 */
+	var STATE_POSSIBLE = 1;
+	var STATE_BEGAN = 2;
+	var STATE_CHANGED = 4;
+	var STATE_ENDED = 8;
+	var STATE_RECOGNIZED = STATE_ENDED;
+	var STATE_CANCELLED = 16;
+	var STATE_FAILED = 32;
+
+	/**
+	 * Recognizer
+	 * Every recognizer needs to extend from this class.
+	 * @constructor
+	 * @param {Object} options
+	 */
+	function Recognizer(options) {
+	    this.options = assign({}, this.defaults, options || {});
+
+	    this.id = uniqueId();
+
+	    this.manager = null;
+
+	    // default is enable true
+	    this.options.enable = ifUndefined(this.options.enable, true);
+
+	    this.state = STATE_POSSIBLE;
+
+	    this.simultaneous = {};
+	    this.requireFail = [];
+	}
+
+	Recognizer.prototype = {
+	    /**
+	     * @virtual
+	     * @type {Object}
+	     */
+	    defaults: {},
+
+	    /**
+	     * set options
+	     * @param {Object} options
+	     * @return {Recognizer}
+	     */
+	    set: function(options) {
+	        assign(this.options, options);
+
+	        // also update the touchAction, in case something changed about the directions/enabled state
+	        this.manager && this.manager.touchAction.update();
+	        return this;
+	    },
+
+	    /**
+	     * recognize simultaneous with an other recognizer.
+	     * @param {Recognizer} otherRecognizer
+	     * @returns {Recognizer} this
+	     */
+	    recognizeWith: function(otherRecognizer) {
+	        if (invokeArrayArg(otherRecognizer, 'recognizeWith', this)) {
+	            return this;
+	        }
+
+	        var simultaneous = this.simultaneous;
+	        otherRecognizer = getRecognizerByNameIfManager(otherRecognizer, this);
+	        if (!simultaneous[otherRecognizer.id]) {
+	            simultaneous[otherRecognizer.id] = otherRecognizer;
+	            otherRecognizer.recognizeWith(this);
+	        }
+	        return this;
+	    },
+
+	    /**
+	     * drop the simultaneous link. it doesnt remove the link on the other recognizer.
+	     * @param {Recognizer} otherRecognizer
+	     * @returns {Recognizer} this
+	     */
+	    dropRecognizeWith: function(otherRecognizer) {
+	        if (invokeArrayArg(otherRecognizer, 'dropRecognizeWith', this)) {
+	            return this;
+	        }
+
+	        otherRecognizer = getRecognizerByNameIfManager(otherRecognizer, this);
+	        delete this.simultaneous[otherRecognizer.id];
+	        return this;
+	    },
+
+	    /**
+	     * recognizer can only run when an other is failing
+	     * @param {Recognizer} otherRecognizer
+	     * @returns {Recognizer} this
+	     */
+	    requireFailure: function(otherRecognizer) {
+	        if (invokeArrayArg(otherRecognizer, 'requireFailure', this)) {
+	            return this;
+	        }
+
+	        var requireFail = this.requireFail;
+	        otherRecognizer = getRecognizerByNameIfManager(otherRecognizer, this);
+	        if (inArray(requireFail, otherRecognizer) === -1) {
+	            requireFail.push(otherRecognizer);
+	            otherRecognizer.requireFailure(this);
+	        }
+	        return this;
+	    },
+
+	    /**
+	     * drop the requireFailure link. it does not remove the link on the other recognizer.
+	     * @param {Recognizer} otherRecognizer
+	     * @returns {Recognizer} this
+	     */
+	    dropRequireFailure: function(otherRecognizer) {
+	        if (invokeArrayArg(otherRecognizer, 'dropRequireFailure', this)) {
+	            return this;
+	        }
+
+	        otherRecognizer = getRecognizerByNameIfManager(otherRecognizer, this);
+	        var index = inArray(this.requireFail, otherRecognizer);
+	        if (index > -1) {
+	            this.requireFail.splice(index, 1);
+	        }
+	        return this;
+	    },
+
+	    /**
+	     * has require failures boolean
+	     * @returns {boolean}
+	     */
+	    hasRequireFailures: function() {
+	        return this.requireFail.length > 0;
+	    },
+
+	    /**
+	     * if the recognizer can recognize simultaneous with an other recognizer
+	     * @param {Recognizer} otherRecognizer
+	     * @returns {Boolean}
+	     */
+	    canRecognizeWith: function(otherRecognizer) {
+	        return !!this.simultaneous[otherRecognizer.id];
+	    },
+
+	    /**
+	     * You should use `tryEmit` instead of `emit` directly to check
+	     * that all the needed recognizers has failed before emitting.
+	     * @param {Object} input
+	     */
+	    emit: function(input) {
+	        var self = this;
+	        var state = this.state;
+
+	        function emit(event) {
+	            self.manager.emit(event, input);
+	        }
+
+	        // 'panstart' and 'panmove'
+	        if (state < STATE_ENDED) {
+	            emit(self.options.event + stateStr(state));
+	        }
+
+	        emit(self.options.event); // simple 'eventName' events
+
+	        if (input.additionalEvent) { // additional event(panleft, panright, pinchin, pinchout...)
+	            emit(input.additionalEvent);
+	        }
+
+	        // panend and pancancel
+	        if (state >= STATE_ENDED) {
+	            emit(self.options.event + stateStr(state));
+	        }
+	    },
+
+	    /**
+	     * Check that all the require failure recognizers has failed,
+	     * if true, it emits a gesture event,
+	     * otherwise, setup the state to FAILED.
+	     * @param {Object} input
+	     */
+	    tryEmit: function(input) {
+	        if (this.canEmit()) {
+	            return this.emit(input);
+	        }
+	        // it's failing anyway
+	        this.state = STATE_FAILED;
+	    },
+
+	    /**
+	     * can we emit?
+	     * @returns {boolean}
+	     */
+	    canEmit: function() {
+	        var i = 0;
+	        while (i < this.requireFail.length) {
+	            if (!(this.requireFail[i].state & (STATE_FAILED | STATE_POSSIBLE))) {
+	                return false;
+	            }
+	            i++;
+	        }
+	        return true;
+	    },
+
+	    /**
+	     * update the recognizer
+	     * @param {Object} inputData
+	     */
+	    recognize: function(inputData) {
+	        // make a new copy of the inputData
+	        // so we can change the inputData without messing up the other recognizers
+	        var inputDataClone = assign({}, inputData);
+
+	        // is is enabled and allow recognizing?
+	        if (!boolOrFn(this.options.enable, [this, inputDataClone])) {
+	            this.reset();
+	            this.state = STATE_FAILED;
+	            return;
+	        }
+
+	        // reset when we've reached the end
+	        if (this.state & (STATE_RECOGNIZED | STATE_CANCELLED | STATE_FAILED)) {
+	            this.state = STATE_POSSIBLE;
+	        }
+
+	        this.state = this.process(inputDataClone);
+
+	        // the recognizer has recognized a gesture
+	        // so trigger an event
+	        if (this.state & (STATE_BEGAN | STATE_CHANGED | STATE_ENDED | STATE_CANCELLED)) {
+	            this.tryEmit(inputDataClone);
+	        }
+	    },
+
+	    /**
+	     * return the state of the recognizer
+	     * the actual recognizing happens in this method
+	     * @virtual
+	     * @param {Object} inputData
+	     * @returns {Const} STATE
+	     */
+	    process: function(inputData) { }, // jshint ignore:line
+
+	    /**
+	     * return the preferred touch-action
+	     * @virtual
+	     * @returns {Array}
+	     */
+	    getTouchAction: function() { },
+
+	    /**
+	     * called when the gesture isn't allowed to recognize
+	     * like when another is being recognized or it is disabled
+	     * @virtual
+	     */
+	    reset: function() { }
+	};
+
+	/**
+	 * get a usable string, used as event postfix
+	 * @param {Const} state
+	 * @returns {String} state
+	 */
+	function stateStr(state) {
+	    if (state & STATE_CANCELLED) {
+	        return 'cancel';
+	    } else if (state & STATE_ENDED) {
+	        return 'end';
+	    } else if (state & STATE_CHANGED) {
+	        return 'move';
+	    } else if (state & STATE_BEGAN) {
+	        return 'start';
+	    }
+	    return '';
+	}
+
+	/**
+	 * direction cons to string
+	 * @param {Const} direction
+	 * @returns {String}
+	 */
+	function directionStr(direction) {
+	    if (direction == DIRECTION_DOWN) {
+	        return 'down';
+	    } else if (direction == DIRECTION_UP) {
+	        return 'up';
+	    } else if (direction == DIRECTION_LEFT) {
+	        return 'left';
+	    } else if (direction == DIRECTION_RIGHT) {
+	        return 'right';
+	    }
+	    return '';
+	}
+
+	/**
+	 * get a recognizer by name if it is bound to a manager
+	 * @param {Recognizer|String} otherRecognizer
+	 * @param {Recognizer} recognizer
+	 * @returns {Recognizer}
+	 */
+	function getRecognizerByNameIfManager(otherRecognizer, recognizer) {
+	    var manager = recognizer.manager;
+	    if (manager) {
+	        return manager.get(otherRecognizer);
+	    }
+	    return otherRecognizer;
+	}
+
+	/**
+	 * This recognizer is just used as a base for the simple attribute recognizers.
+	 * @constructor
+	 * @extends Recognizer
+	 */
+	function AttrRecognizer() {
+	    Recognizer.apply(this, arguments);
+	}
+
+	inherit(AttrRecognizer, Recognizer, {
+	    /**
+	     * @namespace
+	     * @memberof AttrRecognizer
+	     */
+	    defaults: {
+	        /**
+	         * @type {Number}
+	         * @default 1
+	         */
+	        pointers: 1
+	    },
+
+	    /**
+	     * Used to check if it the recognizer receives valid input, like input.distance > 10.
+	     * @memberof AttrRecognizer
+	     * @param {Object} input
+	     * @returns {Boolean} recognized
+	     */
+	    attrTest: function(input) {
+	        var optionPointers = this.options.pointers;
+	        return optionPointers === 0 || input.pointers.length === optionPointers;
+	    },
+
+	    /**
+	     * Process the input and return the state for the recognizer
+	     * @memberof AttrRecognizer
+	     * @param {Object} input
+	     * @returns {*} State
+	     */
+	    process: function(input) {
+	        var state = this.state;
+	        var eventType = input.eventType;
+
+	        var isRecognized = state & (STATE_BEGAN | STATE_CHANGED);
+	        var isValid = this.attrTest(input);
+
+	        // on cancel input and we've recognized before, return STATE_CANCELLED
+	        if (isRecognized && (eventType & INPUT_CANCEL || !isValid)) {
+	            return state | STATE_CANCELLED;
+	        } else if (isRecognized || isValid) {
+	            if (eventType & INPUT_END) {
+	                return state | STATE_ENDED;
+	            } else if (!(state & STATE_BEGAN)) {
+	                return STATE_BEGAN;
+	            }
+	            return state | STATE_CHANGED;
+	        }
+	        return STATE_FAILED;
+	    }
+	});
+
+	/**
+	 * Pan
+	 * Recognized when the pointer is down and moved in the allowed direction.
+	 * @constructor
+	 * @extends AttrRecognizer
+	 */
+	function PanRecognizer() {
+	    AttrRecognizer.apply(this, arguments);
+
+	    this.pX = null;
+	    this.pY = null;
+	}
+
+	inherit(PanRecognizer, AttrRecognizer, {
+	    /**
+	     * @namespace
+	     * @memberof PanRecognizer
+	     */
+	    defaults: {
+	        event: 'pan',
+	        threshold: 10,
+	        pointers: 1,
+	        direction: DIRECTION_ALL
+	    },
+
+	    getTouchAction: function() {
+	        var direction = this.options.direction;
+	        var actions = [];
+	        if (direction & DIRECTION_HORIZONTAL) {
+	            actions.push(TOUCH_ACTION_PAN_Y);
+	        }
+	        if (direction & DIRECTION_VERTICAL) {
+	            actions.push(TOUCH_ACTION_PAN_X);
+	        }
+	        return actions;
+	    },
+
+	    directionTest: function(input) {
+	        var options = this.options;
+	        var hasMoved = true;
+	        var distance = input.distance;
+	        var direction = input.direction;
+	        var x = input.deltaX;
+	        var y = input.deltaY;
+
+	        // lock to axis?
+	        if (!(direction & options.direction)) {
+	            if (options.direction & DIRECTION_HORIZONTAL) {
+	                direction = (x === 0) ? DIRECTION_NONE : (x < 0) ? DIRECTION_LEFT : DIRECTION_RIGHT;
+	                hasMoved = x != this.pX;
+	                distance = Math.abs(input.deltaX);
+	            } else {
+	                direction = (y === 0) ? DIRECTION_NONE : (y < 0) ? DIRECTION_UP : DIRECTION_DOWN;
+	                hasMoved = y != this.pY;
+	                distance = Math.abs(input.deltaY);
+	            }
+	        }
+	        input.direction = direction;
+	        return hasMoved && distance > options.threshold && direction & options.direction;
+	    },
+
+	    attrTest: function(input) {
+	        return AttrRecognizer.prototype.attrTest.call(this, input) &&
+	            (this.state & STATE_BEGAN || (!(this.state & STATE_BEGAN) && this.directionTest(input)));
+	    },
+
+	    emit: function(input) {
+
+	        this.pX = input.deltaX;
+	        this.pY = input.deltaY;
+
+	        var direction = directionStr(input.direction);
+
+	        if (direction) {
+	            input.additionalEvent = this.options.event + direction;
+	        }
+	        this._super.emit.call(this, input);
+	    }
+	});
+
+	/**
+	 * Pinch
+	 * Recognized when two or more pointers are moving toward (zoom-in) or away from each other (zoom-out).
+	 * @constructor
+	 * @extends AttrRecognizer
+	 */
+	function PinchRecognizer() {
+	    AttrRecognizer.apply(this, arguments);
+	}
+
+	inherit(PinchRecognizer, AttrRecognizer, {
+	    /**
+	     * @namespace
+	     * @memberof PinchRecognizer
+	     */
+	    defaults: {
+	        event: 'pinch',
+	        threshold: 0,
+	        pointers: 2
+	    },
+
+	    getTouchAction: function() {
+	        return [TOUCH_ACTION_NONE];
+	    },
+
+	    attrTest: function(input) {
+	        return this._super.attrTest.call(this, input) &&
+	            (Math.abs(input.scale - 1) > this.options.threshold || this.state & STATE_BEGAN);
+	    },
+
+	    emit: function(input) {
+	        if (input.scale !== 1) {
+	            var inOut = input.scale < 1 ? 'in' : 'out';
+	            input.additionalEvent = this.options.event + inOut;
+	        }
+	        this._super.emit.call(this, input);
+	    }
+	});
+
+	/**
+	 * Press
+	 * Recognized when the pointer is down for x ms without any movement.
+	 * @constructor
+	 * @extends Recognizer
+	 */
+	function PressRecognizer() {
+	    Recognizer.apply(this, arguments);
+
+	    this._timer = null;
+	    this._input = null;
+	}
+
+	inherit(PressRecognizer, Recognizer, {
+	    /**
+	     * @namespace
+	     * @memberof PressRecognizer
+	     */
+	    defaults: {
+	        event: 'press',
+	        pointers: 1,
+	        time: 251, // minimal time of the pointer to be pressed
+	        threshold: 9 // a minimal movement is ok, but keep it low
+	    },
+
+	    getTouchAction: function() {
+	        return [TOUCH_ACTION_AUTO];
+	    },
+
+	    process: function(input) {
+	        var options = this.options;
+	        var validPointers = input.pointers.length === options.pointers;
+	        var validMovement = input.distance < options.threshold;
+	        var validTime = input.deltaTime > options.time;
+
+	        this._input = input;
+
+	        // we only allow little movement
+	        // and we've reached an end event, so a tap is possible
+	        if (!validMovement || !validPointers || (input.eventType & (INPUT_END | INPUT_CANCEL) && !validTime)) {
+	            this.reset();
+	        } else if (input.eventType & INPUT_START) {
+	            this.reset();
+	            this._timer = setTimeoutContext(function() {
+	                this.state = STATE_RECOGNIZED;
+	                this.tryEmit();
+	            }, options.time, this);
+	        } else if (input.eventType & INPUT_END) {
+	            return STATE_RECOGNIZED;
+	        }
+	        return STATE_FAILED;
+	    },
+
+	    reset: function() {
+	        clearTimeout(this._timer);
+	    },
+
+	    emit: function(input) {
+	        if (this.state !== STATE_RECOGNIZED) {
+	            return;
+	        }
+
+	        if (input && (input.eventType & INPUT_END)) {
+	            this.manager.emit(this.options.event + 'up', input);
+	        } else {
+	            this._input.timeStamp = now();
+	            this.manager.emit(this.options.event, this._input);
+	        }
+	    }
+	});
+
+	/**
+	 * Rotate
+	 * Recognized when two or more pointer are moving in a circular motion.
+	 * @constructor
+	 * @extends AttrRecognizer
+	 */
+	function RotateRecognizer() {
+	    AttrRecognizer.apply(this, arguments);
+	}
+
+	inherit(RotateRecognizer, AttrRecognizer, {
+	    /**
+	     * @namespace
+	     * @memberof RotateRecognizer
+	     */
+	    defaults: {
+	        event: 'rotate',
+	        threshold: 0,
+	        pointers: 2
+	    },
+
+	    getTouchAction: function() {
+	        return [TOUCH_ACTION_NONE];
+	    },
+
+	    attrTest: function(input) {
+	        return this._super.attrTest.call(this, input) &&
+	            (Math.abs(input.rotation) > this.options.threshold || this.state & STATE_BEGAN);
+	    }
+	});
+
+	/**
+	 * Swipe
+	 * Recognized when the pointer is moving fast (velocity), with enough distance in the allowed direction.
+	 * @constructor
+	 * @extends AttrRecognizer
+	 */
+	function SwipeRecognizer() {
+	    AttrRecognizer.apply(this, arguments);
+	}
+
+	inherit(SwipeRecognizer, AttrRecognizer, {
+	    /**
+	     * @namespace
+	     * @memberof SwipeRecognizer
+	     */
+	    defaults: {
+	        event: 'swipe',
+	        threshold: 10,
+	        velocity: 0.3,
+	        direction: DIRECTION_HORIZONTAL | DIRECTION_VERTICAL,
+	        pointers: 1
+	    },
+
+	    getTouchAction: function() {
+	        return PanRecognizer.prototype.getTouchAction.call(this);
+	    },
+
+	    attrTest: function(input) {
+	        var direction = this.options.direction;
+	        var velocity;
+
+	        if (direction & (DIRECTION_HORIZONTAL | DIRECTION_VERTICAL)) {
+	            velocity = input.overallVelocity;
+	        } else if (direction & DIRECTION_HORIZONTAL) {
+	            velocity = input.overallVelocityX;
+	        } else if (direction & DIRECTION_VERTICAL) {
+	            velocity = input.overallVelocityY;
+	        }
+
+	        return this._super.attrTest.call(this, input) &&
+	            direction & input.offsetDirection &&
+	            input.distance > this.options.threshold &&
+	            input.maxPointers == this.options.pointers &&
+	            abs(velocity) > this.options.velocity && input.eventType & INPUT_END;
+	    },
+
+	    emit: function(input) {
+	        var direction = directionStr(input.offsetDirection);
+	        if (direction) {
+	            this.manager.emit(this.options.event + direction, input);
+	        }
+
+	        this.manager.emit(this.options.event, input);
+	    }
+	});
+
+	/**
+	 * A tap is ecognized when the pointer is doing a small tap/click. Multiple taps are recognized if they occur
+	 * between the given interval and position. The delay option can be used to recognize multi-taps without firing
+	 * a single tap.
+	 *
+	 * The eventData from the emitted event contains the property `tapCount`, which contains the amount of
+	 * multi-taps being recognized.
+	 * @constructor
+	 * @extends Recognizer
+	 */
+	function TapRecognizer() {
+	    Recognizer.apply(this, arguments);
+
+	    // previous time and center,
+	    // used for tap counting
+	    this.pTime = false;
+	    this.pCenter = false;
+
+	    this._timer = null;
+	    this._input = null;
+	    this.count = 0;
+	}
+
+	inherit(TapRecognizer, Recognizer, {
+	    /**
+	     * @namespace
+	     * @memberof PinchRecognizer
+	     */
+	    defaults: {
+	        event: 'tap',
+	        pointers: 1,
+	        taps: 1,
+	        interval: 300, // max time between the multi-tap taps
+	        time: 250, // max time of the pointer to be down (like finger on the screen)
+	        threshold: 9, // a minimal movement is ok, but keep it low
+	        posThreshold: 10 // a multi-tap can be a bit off the initial position
+	    },
+
+	    getTouchAction: function() {
+	        return [TOUCH_ACTION_MANIPULATION];
+	    },
+
+	    process: function(input) {
+	        var options = this.options;
+
+	        var validPointers = input.pointers.length === options.pointers;
+	        var validMovement = input.distance < options.threshold;
+	        var validTouchTime = input.deltaTime < options.time;
+
+	        this.reset();
+
+	        if ((input.eventType & INPUT_START) && (this.count === 0)) {
+	            return this.failTimeout();
+	        }
+
+	        // we only allow little movement
+	        // and we've reached an end event, so a tap is possible
+	        if (validMovement && validTouchTime && validPointers) {
+	            if (input.eventType != INPUT_END) {
+	                return this.failTimeout();
+	            }
+
+	            var validInterval = this.pTime ? (input.timeStamp - this.pTime < options.interval) : true;
+	            var validMultiTap = !this.pCenter || getDistance(this.pCenter, input.center) < options.posThreshold;
+
+	            this.pTime = input.timeStamp;
+	            this.pCenter = input.center;
+
+	            if (!validMultiTap || !validInterval) {
+	                this.count = 1;
+	            } else {
+	                this.count += 1;
+	            }
+
+	            this._input = input;
+
+	            // if tap count matches we have recognized it,
+	            // else it has began recognizing...
+	            var tapCount = this.count % options.taps;
+	            if (tapCount === 0) {
+	                // no failing requirements, immediately trigger the tap event
+	                // or wait as long as the multitap interval to trigger
+	                if (!this.hasRequireFailures()) {
+	                    return STATE_RECOGNIZED;
+	                } else {
+	                    this._timer = setTimeoutContext(function() {
+	                        this.state = STATE_RECOGNIZED;
+	                        this.tryEmit();
+	                    }, options.interval, this);
+	                    return STATE_BEGAN;
+	                }
+	            }
+	        }
+	        return STATE_FAILED;
+	    },
+
+	    failTimeout: function() {
+	        this._timer = setTimeoutContext(function() {
+	            this.state = STATE_FAILED;
+	        }, this.options.interval, this);
+	        return STATE_FAILED;
+	    },
+
+	    reset: function() {
+	        clearTimeout(this._timer);
+	    },
+
+	    emit: function() {
+	        if (this.state == STATE_RECOGNIZED) {
+	            this._input.tapCount = this.count;
+	            this.manager.emit(this.options.event, this._input);
+	        }
+	    }
+	});
+
+	/**
+	 * Simple way to create a manager with a default set of recognizers.
+	 * @param {HTMLElement} element
+	 * @param {Object} [options]
+	 * @constructor
+	 */
+	function Hammer(element, options) {
+	    options = options || {};
+	    options.recognizers = ifUndefined(options.recognizers, Hammer.defaults.preset);
+	    return new Manager(element, options);
+	}
+
+	/**
+	 * @const {string}
+	 */
+	Hammer.VERSION = '2.0.7';
+
+	/**
+	 * default settings
+	 * @namespace
+	 */
+	Hammer.defaults = {
+	    /**
+	     * set if DOM events are being triggered.
+	     * But this is slower and unused by simple implementations, so disabled by default.
+	     * @type {Boolean}
+	     * @default false
+	     */
+	    domEvents: false,
+
+	    /**
+	     * The value for the touchAction property/fallback.
+	     * When set to `compute` it will magically set the correct value based on the added recognizers.
+	     * @type {String}
+	     * @default compute
+	     */
+	    touchAction: TOUCH_ACTION_COMPUTE,
+
+	    /**
+	     * @type {Boolean}
+	     * @default true
+	     */
+	    enable: true,
+
+	    /**
+	     * EXPERIMENTAL FEATURE -- can be removed/changed
+	     * Change the parent input target element.
+	     * If Null, then it is being set the to main element.
+	     * @type {Null|EventTarget}
+	     * @default null
+	     */
+	    inputTarget: null,
+
+	    /**
+	     * force an input class
+	     * @type {Null|Function}
+	     * @default null
+	     */
+	    inputClass: null,
+
+	    /**
+	     * Default recognizer setup when calling `Hammer()`
+	     * When creating a new Manager these will be skipped.
+	     * @type {Array}
+	     */
+	    preset: [
+	        // RecognizerClass, options, [recognizeWith, ...], [requireFailure, ...]
+	        [RotateRecognizer, {enable: false}],
+	        [PinchRecognizer, {enable: false}, ['rotate']],
+	        [SwipeRecognizer, {direction: DIRECTION_HORIZONTAL}],
+	        [PanRecognizer, {direction: DIRECTION_HORIZONTAL}, ['swipe']],
+	        [TapRecognizer],
+	        [TapRecognizer, {event: 'doubletap', taps: 2}, ['tap']],
+	        [PressRecognizer]
+	    ],
+
+	    /**
+	     * Some CSS properties can be used to improve the working of Hammer.
+	     * Add them to this method and they will be set when creating a new Manager.
+	     * @namespace
+	     */
+	    cssProps: {
+	        /**
+	         * Disables text selection to improve the dragging gesture. Mainly for desktop browsers.
+	         * @type {String}
+	         * @default 'none'
+	         */
+	        userSelect: 'none',
+
+	        /**
+	         * Disable the Windows Phone grippers when pressing an element.
+	         * @type {String}
+	         * @default 'none'
+	         */
+	        touchSelect: 'none',
+
+	        /**
+	         * Disables the default callout shown when you touch and hold a touch target.
+	         * On iOS, when you touch and hold a touch target such as a link, Safari displays
+	         * a callout containing information about the link. This property allows you to disable that callout.
+	         * @type {String}
+	         * @default 'none'
+	         */
+	        touchCallout: 'none',
+
+	        /**
+	         * Specifies whether zooming is enabled. Used by IE10>
+	         * @type {String}
+	         * @default 'none'
+	         */
+	        contentZooming: 'none',
+
+	        /**
+	         * Specifies that an entire element should be draggable instead of its contents. Mainly for desktop browsers.
+	         * @type {String}
+	         * @default 'none'
+	         */
+	        userDrag: 'none',
+
+	        /**
+	         * Overrides the highlight color shown when the user taps a link or a JavaScript
+	         * clickable element in iOS. This property obeys the alpha value, if specified.
+	         * @type {String}
+	         * @default 'rgba(0,0,0,0)'
+	         */
+	        tapHighlightColor: 'rgba(0,0,0,0)'
+	    }
+	};
+
+	var STOP = 1;
+	var FORCED_STOP = 2;
+
+	/**
+	 * Manager
+	 * @param {HTMLElement} element
+	 * @param {Object} [options]
+	 * @constructor
+	 */
+	function Manager(element, options) {
+	    this.options = assign({}, Hammer.defaults, options || {});
+
+	    this.options.inputTarget = this.options.inputTarget || element;
+
+	    this.handlers = {};
+	    this.session = {};
+	    this.recognizers = [];
+	    this.oldCssProps = {};
+
+	    this.element = element;
+	    this.input = createInputInstance(this);
+	    this.touchAction = new TouchAction(this, this.options.touchAction);
+
+	    toggleCssProps(this, true);
+
+	    each(this.options.recognizers, function(item) {
+	        var recognizer = this.add(new (item[0])(item[1]));
+	        item[2] && recognizer.recognizeWith(item[2]);
+	        item[3] && recognizer.requireFailure(item[3]);
+	    }, this);
+	}
+
+	Manager.prototype = {
+	    /**
+	     * set options
+	     * @param {Object} options
+	     * @returns {Manager}
+	     */
+	    set: function(options) {
+	        assign(this.options, options);
+
+	        // Options that need a little more setup
+	        if (options.touchAction) {
+	            this.touchAction.update();
+	        }
+	        if (options.inputTarget) {
+	            // Clean up existing event listeners and reinitialize
+	            this.input.destroy();
+	            this.input.target = options.inputTarget;
+	            this.input.init();
+	        }
+	        return this;
+	    },
+
+	    /**
+	     * stop recognizing for this session.
+	     * This session will be discarded, when a new [input]start event is fired.
+	     * When forced, the recognizer cycle is stopped immediately.
+	     * @param {Boolean} [force]
+	     */
+	    stop: function(force) {
+	        this.session.stopped = force ? FORCED_STOP : STOP;
+	    },
+
+	    /**
+	     * run the recognizers!
+	     * called by the inputHandler function on every movement of the pointers (touches)
+	     * it walks through all the recognizers and tries to detect the gesture that is being made
+	     * @param {Object} inputData
+	     */
+	    recognize: function(inputData) {
+	        var session = this.session;
+	        if (session.stopped) {
+	            return;
+	        }
+
+	        // run the touch-action polyfill
+	        this.touchAction.preventDefaults(inputData);
+
+	        var recognizer;
+	        var recognizers = this.recognizers;
+
+	        // this holds the recognizer that is being recognized.
+	        // so the recognizer's state needs to be BEGAN, CHANGED, ENDED or RECOGNIZED
+	        // if no recognizer is detecting a thing, it is set to `null`
+	        var curRecognizer = session.curRecognizer;
+
+	        // reset when the last recognizer is recognized
+	        // or when we're in a new session
+	        if (!curRecognizer || (curRecognizer && curRecognizer.state & STATE_RECOGNIZED)) {
+	            curRecognizer = session.curRecognizer = null;
+	        }
+
+	        var i = 0;
+	        while (i < recognizers.length) {
+	            recognizer = recognizers[i];
+
+	            // find out if we are allowed try to recognize the input for this one.
+	            // 1.   allow if the session is NOT forced stopped (see the .stop() method)
+	            // 2.   allow if we still haven't recognized a gesture in this session, or the this recognizer is the one
+	            //      that is being recognized.
+	            // 3.   allow if the recognizer is allowed to run simultaneous with the current recognized recognizer.
+	            //      this can be setup with the `recognizeWith()` method on the recognizer.
+	            if (session.stopped !== FORCED_STOP && ( // 1
+	                    !curRecognizer || recognizer == curRecognizer || // 2
+	                    recognizer.canRecognizeWith(curRecognizer))) { // 3
+	                recognizer.recognize(inputData);
+	            } else {
+	                recognizer.reset();
+	            }
+
+	            // if the recognizer has been recognizing the input as a valid gesture, we want to store this one as the
+	            // current active recognizer. but only if we don't already have an active recognizer
+	            if (!curRecognizer && recognizer.state & (STATE_BEGAN | STATE_CHANGED | STATE_ENDED)) {
+	                curRecognizer = session.curRecognizer = recognizer;
+	            }
+	            i++;
+	        }
+	    },
+
+	    /**
+	     * get a recognizer by its event name.
+	     * @param {Recognizer|String} recognizer
+	     * @returns {Recognizer|Null}
+	     */
+	    get: function(recognizer) {
+	        if (recognizer instanceof Recognizer) {
+	            return recognizer;
+	        }
+
+	        var recognizers = this.recognizers;
+	        for (var i = 0; i < recognizers.length; i++) {
+	            if (recognizers[i].options.event == recognizer) {
+	                return recognizers[i];
+	            }
+	        }
+	        return null;
+	    },
+
+	    /**
+	     * add a recognizer to the manager
+	     * existing recognizers with the same event name will be removed
+	     * @param {Recognizer} recognizer
+	     * @returns {Recognizer|Manager}
+	     */
+	    add: function(recognizer) {
+	        if (invokeArrayArg(recognizer, 'add', this)) {
+	            return this;
+	        }
+
+	        // remove existing
+	        var existing = this.get(recognizer.options.event);
+	        if (existing) {
+	            this.remove(existing);
+	        }
+
+	        this.recognizers.push(recognizer);
+	        recognizer.manager = this;
+
+	        this.touchAction.update();
+	        return recognizer;
+	    },
+
+	    /**
+	     * remove a recognizer by name or instance
+	     * @param {Recognizer|String} recognizer
+	     * @returns {Manager}
+	     */
+	    remove: function(recognizer) {
+	        if (invokeArrayArg(recognizer, 'remove', this)) {
+	            return this;
+	        }
+
+	        recognizer = this.get(recognizer);
+
+	        // let's make sure this recognizer exists
+	        if (recognizer) {
+	            var recognizers = this.recognizers;
+	            var index = inArray(recognizers, recognizer);
+
+	            if (index !== -1) {
+	                recognizers.splice(index, 1);
+	                this.touchAction.update();
+	            }
+	        }
+
+	        return this;
+	    },
+
+	    /**
+	     * bind event
+	     * @param {String} events
+	     * @param {Function} handler
+	     * @returns {EventEmitter} this
+	     */
+	    on: function(events, handler) {
+	        if (events === undefined) {
+	            return;
+	        }
+	        if (handler === undefined) {
+	            return;
+	        }
+
+	        var handlers = this.handlers;
+	        each(splitStr(events), function(event) {
+	            handlers[event] = handlers[event] || [];
+	            handlers[event].push(handler);
+	        });
+	        return this;
+	    },
+
+	    /**
+	     * unbind event, leave emit blank to remove all handlers
+	     * @param {String} events
+	     * @param {Function} [handler]
+	     * @returns {EventEmitter} this
+	     */
+	    off: function(events, handler) {
+	        if (events === undefined) {
+	            return;
+	        }
+
+	        var handlers = this.handlers;
+	        each(splitStr(events), function(event) {
+	            if (!handler) {
+	                delete handlers[event];
+	            } else {
+	                handlers[event] && handlers[event].splice(inArray(handlers[event], handler), 1);
+	            }
+	        });
+	        return this;
+	    },
+
+	    /**
+	     * emit event to the listeners
+	     * @param {String} event
+	     * @param {Object} data
+	     */
+	    emit: function(event, data) {
+	        // we also want to trigger dom events
+	        if (this.options.domEvents) {
+	            triggerDomEvent(event, data);
+	        }
+
+	        // no handlers, so skip it all
+	        var handlers = this.handlers[event] && this.handlers[event].slice();
+	        if (!handlers || !handlers.length) {
+	            return;
+	        }
+
+	        data.type = event;
+	        data.preventDefault = function() {
+	            data.srcEvent.preventDefault();
+	        };
+
+	        var i = 0;
+	        while (i < handlers.length) {
+	            handlers[i](data);
+	            i++;
+	        }
+	    },
+
+	    /**
+	     * destroy the manager and unbinds all events
+	     * it doesn't unbind dom events, that is the user own responsibility
+	     */
+	    destroy: function() {
+	        this.element && toggleCssProps(this, false);
+
+	        this.handlers = {};
+	        this.session = {};
+	        this.input.destroy();
+	        this.element = null;
+	    }
+	};
+
+	/**
+	 * add/remove the css properties as defined in manager.options.cssProps
+	 * @param {Manager} manager
+	 * @param {Boolean} add
+	 */
+	function toggleCssProps(manager, add) {
+	    var element = manager.element;
+	    if (!element.style) {
+	        return;
+	    }
+	    var prop;
+	    each(manager.options.cssProps, function(value, name) {
+	        prop = prefixed(element.style, name);
+	        if (add) {
+	            manager.oldCssProps[prop] = element.style[prop];
+	            element.style[prop] = value;
+	        } else {
+	            element.style[prop] = manager.oldCssProps[prop] || '';
+	        }
+	    });
+	    if (!add) {
+	        manager.oldCssProps = {};
+	    }
+	}
+
+	/**
+	 * trigger dom event
+	 * @param {String} event
+	 * @param {Object} data
+	 */
+	function triggerDomEvent(event, data) {
+	    var gestureEvent = document.createEvent('Event');
+	    gestureEvent.initEvent(event, true, true);
+	    gestureEvent.gesture = data;
+	    data.target.dispatchEvent(gestureEvent);
+	}
+
+	assign(Hammer, {
+	    INPUT_START: INPUT_START,
+	    INPUT_MOVE: INPUT_MOVE,
+	    INPUT_END: INPUT_END,
+	    INPUT_CANCEL: INPUT_CANCEL,
+
+	    STATE_POSSIBLE: STATE_POSSIBLE,
+	    STATE_BEGAN: STATE_BEGAN,
+	    STATE_CHANGED: STATE_CHANGED,
+	    STATE_ENDED: STATE_ENDED,
+	    STATE_RECOGNIZED: STATE_RECOGNIZED,
+	    STATE_CANCELLED: STATE_CANCELLED,
+	    STATE_FAILED: STATE_FAILED,
+
+	    DIRECTION_NONE: DIRECTION_NONE,
+	    DIRECTION_LEFT: DIRECTION_LEFT,
+	    DIRECTION_RIGHT: DIRECTION_RIGHT,
+	    DIRECTION_UP: DIRECTION_UP,
+	    DIRECTION_DOWN: DIRECTION_DOWN,
+	    DIRECTION_HORIZONTAL: DIRECTION_HORIZONTAL,
+	    DIRECTION_VERTICAL: DIRECTION_VERTICAL,
+	    DIRECTION_ALL: DIRECTION_ALL,
+
+	    Manager: Manager,
+	    Input: Input,
+	    TouchAction: TouchAction,
+
+	    TouchInput: TouchInput,
+	    MouseInput: MouseInput,
+	    PointerEventInput: PointerEventInput,
+	    TouchMouseInput: TouchMouseInput,
+	    SingleTouchInput: SingleTouchInput,
+
+	    Recognizer: Recognizer,
+	    AttrRecognizer: AttrRecognizer,
+	    Tap: TapRecognizer,
+	    Pan: PanRecognizer,
+	    Swipe: SwipeRecognizer,
+	    Pinch: PinchRecognizer,
+	    Rotate: RotateRecognizer,
+	    Press: PressRecognizer,
+
+	    on: addEventListeners,
+	    off: removeEventListeners,
+	    each: each,
+	    merge: merge,
+	    extend: extend,
+	    assign: assign,
+	    inherit: inherit,
+	    bindFn: bindFn,
+	    prefixed: prefixed
+	});
+
+	// this prevents errors when Hammer is loaded in the presence of an AMD
+	//  style loader but by script tag, not by the loader.
+	var freeGlobal = (typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {})); // jshint ignore:line
+	freeGlobal.Hammer = Hammer;
+
+	if (true) {
+	    !(__WEBPACK_AMD_DEFINE_RESULT__ = function() {
+	        return Hammer;
+	    }.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	} else if (typeof module != 'undefined' && module.exports) {
+	    module.exports = Hammer;
+	} else {
+	    window[exportName] = Hammer;
+	}
+
+	})(window, document, 'Hammer');
+
+
+/***/ },
+/* 159 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
+	 * mustache.js - Logic-less {{mustache}} templates with JavaScript
+	 * http://github.com/janl/mustache.js
+	 */
+
+	/*global define: false Mustache: true*/
+
+	(function defineMustache (global, factory) {
+	  if (typeof exports === 'object' && exports && typeof exports.nodeName !== 'string') {
+	    factory(exports); // CommonJS
+	  } else if (true) {
+	    !(__WEBPACK_AMD_DEFINE_ARRAY__ = [exports], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)); // AMD
+	  } else {
+	    global.Mustache = {};
+	    factory(global.Mustache); // script, wsh, asp
+	  }
+	}(this, function mustacheFactory (mustache) {
+
+	  var objectToString = Object.prototype.toString;
+	  var isArray = Array.isArray || function isArrayPolyfill (object) {
+	    return objectToString.call(object) === '[object Array]';
+	  };
+
+	  function isFunction (object) {
+	    return typeof object === 'function';
+	  }
+
+	  /**
+	   * More correct typeof string handling array
+	   * which normally returns typeof 'object'
+	   */
+	  function typeStr (obj) {
+	    return isArray(obj) ? 'array' : typeof obj;
+	  }
+
+	  function escapeRegExp (string) {
+	    return string.replace(/[\-\[\]{}()*+?.,\\\^$|#\s]/g, '\\$&');
+	  }
+
+	  /**
+	   * Null safe way of checking whether or not an object,
+	   * including its prototype, has a given property
+	   */
+	  function hasProperty (obj, propName) {
+	    return obj != null && typeof obj === 'object' && (propName in obj);
+	  }
+
+	  // Workaround for https://issues.apache.org/jira/browse/COUCHDB-577
+	  // See https://github.com/janl/mustache.js/issues/189
+	  var regExpTest = RegExp.prototype.test;
+	  function testRegExp (re, string) {
+	    return regExpTest.call(re, string);
+	  }
+
+	  var nonSpaceRe = /\S/;
+	  function isWhitespace (string) {
+	    return !testRegExp(nonSpaceRe, string);
+	  }
+
+	  var entityMap = {
+	    '&': '&amp;',
+	    '<': '&lt;',
+	    '>': '&gt;',
+	    '"': '&quot;',
+	    "'": '&#39;',
+	    '/': '&#x2F;',
+	    '`': '&#x60;',
+	    '=': '&#x3D;'
+	  };
+
+	  function escapeHtml (string) {
+	    return String(string).replace(/[&<>"'`=\/]/g, function fromEntityMap (s) {
+	      return entityMap[s];
+	    });
+	  }
+
+	  var whiteRe = /\s*/;
+	  var spaceRe = /\s+/;
+	  var equalsRe = /\s*=/;
+	  var curlyRe = /\s*\}/;
+	  var tagRe = /#|\^|\/|>|\{|&|=|!/;
+
+	  /**
+	   * Breaks up the given `template` string into a tree of tokens. If the `tags`
+	   * argument is given here it must be an array with two string values: the
+	   * opening and closing tags used in the template (e.g. [ "<%", "%>" ]). Of
+	   * course, the default is to use mustaches (i.e. mustache.tags).
+	   *
+	   * A token is an array with at least 4 elements. The first element is the
+	   * mustache symbol that was used inside the tag, e.g. "#" or "&". If the tag
+	   * did not contain a symbol (i.e. {{myValue}}) this element is "name". For
+	   * all text that appears outside a symbol this element is "text".
+	   *
+	   * The second element of a token is its "value". For mustache tags this is
+	   * whatever else was inside the tag besides the opening symbol. For text tokens
+	   * this is the text itself.
+	   *
+	   * The third and fourth elements of the token are the start and end indices,
+	   * respectively, of the token in the original template.
+	   *
+	   * Tokens that are the root node of a subtree contain two more elements: 1) an
+	   * array of tokens in the subtree and 2) the index in the original template at
+	   * which the closing tag for that section begins.
+	   */
+	  function parseTemplate (template, tags) {
+	    if (!template)
+	      return [];
+
+	    var sections = [];     // Stack to hold section tokens
+	    var tokens = [];       // Buffer to hold the tokens
+	    var spaces = [];       // Indices of whitespace tokens on the current line
+	    var hasTag = false;    // Is there a {{tag}} on the current line?
+	    var nonSpace = false;  // Is there a non-space char on the current line?
+
+	    // Strips all whitespace tokens array for the current line
+	    // if there was a {{#tag}} on it and otherwise only space.
+	    function stripSpace () {
+	      if (hasTag && !nonSpace) {
+	        while (spaces.length)
+	          delete tokens[spaces.pop()];
+	      } else {
+	        spaces = [];
+	      }
+
+	      hasTag = false;
+	      nonSpace = false;
+	    }
+
+	    var openingTagRe, closingTagRe, closingCurlyRe;
+	    function compileTags (tagsToCompile) {
+	      if (typeof tagsToCompile === 'string')
+	        tagsToCompile = tagsToCompile.split(spaceRe, 2);
+
+	      if (!isArray(tagsToCompile) || tagsToCompile.length !== 2)
+	        throw new Error('Invalid tags: ' + tagsToCompile);
+
+	      openingTagRe = new RegExp(escapeRegExp(tagsToCompile[0]) + '\\s*');
+	      closingTagRe = new RegExp('\\s*' + escapeRegExp(tagsToCompile[1]));
+	      closingCurlyRe = new RegExp('\\s*' + escapeRegExp('}' + tagsToCompile[1]));
+	    }
+
+	    compileTags(tags || mustache.tags);
+
+	    var scanner = new Scanner(template);
+
+	    var start, type, value, chr, token, openSection;
+	    while (!scanner.eos()) {
+	      start = scanner.pos;
+
+	      // Match any text between tags.
+	      value = scanner.scanUntil(openingTagRe);
+
+	      if (value) {
+	        for (var i = 0, valueLength = value.length; i < valueLength; ++i) {
+	          chr = value.charAt(i);
+
+	          if (isWhitespace(chr)) {
+	            spaces.push(tokens.length);
+	          } else {
+	            nonSpace = true;
+	          }
+
+	          tokens.push([ 'text', chr, start, start + 1 ]);
+	          start += 1;
+
+	          // Check for whitespace on the current line.
+	          if (chr === '\n')
+	            stripSpace();
+	        }
+	      }
+
+	      // Match the opening tag.
+	      if (!scanner.scan(openingTagRe))
+	        break;
+
+	      hasTag = true;
+
+	      // Get the tag type.
+	      type = scanner.scan(tagRe) || 'name';
+	      scanner.scan(whiteRe);
+
+	      // Get the tag value.
+	      if (type === '=') {
+	        value = scanner.scanUntil(equalsRe);
+	        scanner.scan(equalsRe);
+	        scanner.scanUntil(closingTagRe);
+	      } else if (type === '{') {
+	        value = scanner.scanUntil(closingCurlyRe);
+	        scanner.scan(curlyRe);
+	        scanner.scanUntil(closingTagRe);
+	        type = '&';
+	      } else {
+	        value = scanner.scanUntil(closingTagRe);
+	      }
+
+	      // Match the closing tag.
+	      if (!scanner.scan(closingTagRe))
+	        throw new Error('Unclosed tag at ' + scanner.pos);
+
+	      token = [ type, value, start, scanner.pos ];
+	      tokens.push(token);
+
+	      if (type === '#' || type === '^') {
+	        sections.push(token);
+	      } else if (type === '/') {
+	        // Check section nesting.
+	        openSection = sections.pop();
+
+	        if (!openSection)
+	          throw new Error('Unopened section "' + value + '" at ' + start);
+
+	        if (openSection[1] !== value)
+	          throw new Error('Unclosed section "' + openSection[1] + '" at ' + start);
+	      } else if (type === 'name' || type === '{' || type === '&') {
+	        nonSpace = true;
+	      } else if (type === '=') {
+	        // Set the tags for the next time around.
+	        compileTags(value);
+	      }
+	    }
+
+	    // Make sure there are no open sections when we're done.
+	    openSection = sections.pop();
+
+	    if (openSection)
+	      throw new Error('Unclosed section "' + openSection[1] + '" at ' + scanner.pos);
+
+	    return nestTokens(squashTokens(tokens));
+	  }
+
+	  /**
+	   * Combines the values of consecutive text tokens in the given `tokens` array
+	   * to a single token.
+	   */
+	  function squashTokens (tokens) {
+	    var squashedTokens = [];
+
+	    var token, lastToken;
+	    for (var i = 0, numTokens = tokens.length; i < numTokens; ++i) {
+	      token = tokens[i];
+
+	      if (token) {
+	        if (token[0] === 'text' && lastToken && lastToken[0] === 'text') {
+	          lastToken[1] += token[1];
+	          lastToken[3] = token[3];
+	        } else {
+	          squashedTokens.push(token);
+	          lastToken = token;
+	        }
+	      }
+	    }
+
+	    return squashedTokens;
+	  }
+
+	  /**
+	   * Forms the given array of `tokens` into a nested tree structure where
+	   * tokens that represent a section have two additional items: 1) an array of
+	   * all tokens that appear in that section and 2) the index in the original
+	   * template that represents the end of that section.
+	   */
+	  function nestTokens (tokens) {
+	    var nestedTokens = [];
+	    var collector = nestedTokens;
+	    var sections = [];
+
+	    var token, section;
+	    for (var i = 0, numTokens = tokens.length; i < numTokens; ++i) {
+	      token = tokens[i];
+
+	      switch (token[0]) {
+	        case '#':
+	        case '^':
+	          collector.push(token);
+	          sections.push(token);
+	          collector = token[4] = [];
+	          break;
+	        case '/':
+	          section = sections.pop();
+	          section[5] = token[2];
+	          collector = sections.length > 0 ? sections[sections.length - 1][4] : nestedTokens;
+	          break;
+	        default:
+	          collector.push(token);
+	      }
+	    }
+
+	    return nestedTokens;
+	  }
+
+	  /**
+	   * A simple string scanner that is used by the template parser to find
+	   * tokens in template strings.
+	   */
+	  function Scanner (string) {
+	    this.string = string;
+	    this.tail = string;
+	    this.pos = 0;
+	  }
+
+	  /**
+	   * Returns `true` if the tail is empty (end of string).
+	   */
+	  Scanner.prototype.eos = function eos () {
+	    return this.tail === '';
+	  };
+
+	  /**
+	   * Tries to match the given regular expression at the current position.
+	   * Returns the matched text if it can match, the empty string otherwise.
+	   */
+	  Scanner.prototype.scan = function scan (re) {
+	    var match = this.tail.match(re);
+
+	    if (!match || match.index !== 0)
+	      return '';
+
+	    var string = match[0];
+
+	    this.tail = this.tail.substring(string.length);
+	    this.pos += string.length;
+
+	    return string;
+	  };
+
+	  /**
+	   * Skips all text until the given regular expression can be matched. Returns
+	   * the skipped string, which is the entire tail if no match can be made.
+	   */
+	  Scanner.prototype.scanUntil = function scanUntil (re) {
+	    var index = this.tail.search(re), match;
+
+	    switch (index) {
+	      case -1:
+	        match = this.tail;
+	        this.tail = '';
+	        break;
+	      case 0:
+	        match = '';
+	        break;
+	      default:
+	        match = this.tail.substring(0, index);
+	        this.tail = this.tail.substring(index);
+	    }
+
+	    this.pos += match.length;
+
+	    return match;
+	  };
+
+	  /**
+	   * Represents a rendering context by wrapping a view object and
+	   * maintaining a reference to the parent context.
+	   */
+	  function Context (view, parentContext) {
+	    this.view = view;
+	    this.cache = { '.': this.view };
+	    this.parent = parentContext;
+	  }
+
+	  /**
+	   * Creates a new context using the given view with this context
+	   * as the parent.
+	   */
+	  Context.prototype.push = function push (view) {
+	    return new Context(view, this);
+	  };
+
+	  /**
+	   * Returns the value of the given name in this context, traversing
+	   * up the context hierarchy if the value is absent in this context's view.
+	   */
+	  Context.prototype.lookup = function lookup (name) {
+	    var cache = this.cache;
+
+	    var value;
+	    if (cache.hasOwnProperty(name)) {
+	      value = cache[name];
+	    } else {
+	      var context = this, names, index, lookupHit = false;
+
+	      while (context) {
+	        if (name.indexOf('.') > 0) {
+	          value = context.view;
+	          names = name.split('.');
+	          index = 0;
+
+	          /**
+	           * Using the dot notion path in `name`, we descend through the
+	           * nested objects.
+	           *
+	           * To be certain that the lookup has been successful, we have to
+	           * check if the last object in the path actually has the property
+	           * we are looking for. We store the result in `lookupHit`.
+	           *
+	           * This is specially necessary for when the value has been set to
+	           * `undefined` and we want to avoid looking up parent contexts.
+	           **/
+	          while (value != null && index < names.length) {
+	            if (index === names.length - 1)
+	              lookupHit = hasProperty(value, names[index]);
+
+	            value = value[names[index++]];
+	          }
+	        } else {
+	          value = context.view[name];
+	          lookupHit = hasProperty(context.view, name);
+	        }
+
+	        if (lookupHit)
+	          break;
+
+	        context = context.parent;
+	      }
+
+	      cache[name] = value;
+	    }
+
+	    if (isFunction(value))
+	      value = value.call(this.view);
+
+	    return value;
+	  };
+
+	  /**
+	   * A Writer knows how to take a stream of tokens and render them to a
+	   * string, given a context. It also maintains a cache of templates to
+	   * avoid the need to parse the same template twice.
+	   */
+	  function Writer () {
+	    this.cache = {};
+	  }
+
+	  /**
+	   * Clears all cached templates in this writer.
+	   */
+	  Writer.prototype.clearCache = function clearCache () {
+	    this.cache = {};
+	  };
+
+	  /**
+	   * Parses and caches the given `template` and returns the array of tokens
+	   * that is generated from the parse.
+	   */
+	  Writer.prototype.parse = function parse (template, tags) {
+	    var cache = this.cache;
+	    var tokens = cache[template];
+
+	    if (tokens == null)
+	      tokens = cache[template] = parseTemplate(template, tags);
+
+	    return tokens;
+	  };
+
+	  /**
+	   * High-level method that is used to render the given `template` with
+	   * the given `view`.
+	   *
+	   * The optional `partials` argument may be an object that contains the
+	   * names and templates of partials that are used in the template. It may
+	   * also be a function that is used to load partial templates on the fly
+	   * that takes a single argument: the name of the partial.
+	   */
+	  Writer.prototype.render = function render (template, view, partials) {
+	    var tokens = this.parse(template);
+	    var context = (view instanceof Context) ? view : new Context(view);
+	    return this.renderTokens(tokens, context, partials, template);
+	  };
+
+	  /**
+	   * Low-level method that renders the given array of `tokens` using
+	   * the given `context` and `partials`.
+	   *
+	   * Note: The `originalTemplate` is only ever used to extract the portion
+	   * of the original template that was contained in a higher-order section.
+	   * If the template doesn't use higher-order sections, this argument may
+	   * be omitted.
+	   */
+	  Writer.prototype.renderTokens = function renderTokens (tokens, context, partials, originalTemplate) {
+	    var buffer = '';
+
+	    var token, symbol, value;
+	    for (var i = 0, numTokens = tokens.length; i < numTokens; ++i) {
+	      value = undefined;
+	      token = tokens[i];
+	      symbol = token[0];
+
+	      if (symbol === '#') value = this.renderSection(token, context, partials, originalTemplate);
+	      else if (symbol === '^') value = this.renderInverted(token, context, partials, originalTemplate);
+	      else if (symbol === '>') value = this.renderPartial(token, context, partials, originalTemplate);
+	      else if (symbol === '&') value = this.unescapedValue(token, context);
+	      else if (symbol === 'name') value = this.escapedValue(token, context);
+	      else if (symbol === 'text') value = this.rawValue(token);
+
+	      if (value !== undefined)
+	        buffer += value;
+	    }
+
+	    return buffer;
+	  };
+
+	  Writer.prototype.renderSection = function renderSection (token, context, partials, originalTemplate) {
+	    var self = this;
+	    var buffer = '';
+	    var value = context.lookup(token[1]);
+
+	    // This function is used to render an arbitrary template
+	    // in the current context by higher-order sections.
+	    function subRender (template) {
+	      return self.render(template, context, partials);
+	    }
+
+	    if (!value) return;
+
+	    if (isArray(value)) {
+	      for (var j = 0, valueLength = value.length; j < valueLength; ++j) {
+	        buffer += this.renderTokens(token[4], context.push(value[j]), partials, originalTemplate);
+	      }
+	    } else if (typeof value === 'object' || typeof value === 'string' || typeof value === 'number') {
+	      buffer += this.renderTokens(token[4], context.push(value), partials, originalTemplate);
+	    } else if (isFunction(value)) {
+	      if (typeof originalTemplate !== 'string')
+	        throw new Error('Cannot use higher-order sections without the original template');
+
+	      // Extract the portion of the original template that the section contains.
+	      value = value.call(context.view, originalTemplate.slice(token[3], token[5]), subRender);
+
+	      if (value != null)
+	        buffer += value;
+	    } else {
+	      buffer += this.renderTokens(token[4], context, partials, originalTemplate);
+	    }
+	    return buffer;
+	  };
+
+	  Writer.prototype.renderInverted = function renderInverted (token, context, partials, originalTemplate) {
+	    var value = context.lookup(token[1]);
+
+	    // Use JavaScript's definition of falsy. Include empty arrays.
+	    // See https://github.com/janl/mustache.js/issues/186
+	    if (!value || (isArray(value) && value.length === 0))
+	      return this.renderTokens(token[4], context, partials, originalTemplate);
+	  };
+
+	  Writer.prototype.renderPartial = function renderPartial (token, context, partials) {
+	    if (!partials) return;
+
+	    var value = isFunction(partials) ? partials(token[1]) : partials[token[1]];
+	    if (value != null)
+	      return this.renderTokens(this.parse(value), context, partials, value);
+	  };
+
+	  Writer.prototype.unescapedValue = function unescapedValue (token, context) {
+	    var value = context.lookup(token[1]);
+	    if (value != null)
+	      return value;
+	  };
+
+	  Writer.prototype.escapedValue = function escapedValue (token, context) {
+	    var value = context.lookup(token[1]);
+	    if (value != null)
+	      return mustache.escape(value);
+	  };
+
+	  Writer.prototype.rawValue = function rawValue (token) {
+	    return token[1];
+	  };
+
+	  mustache.name = 'mustache.js';
+	  mustache.version = '2.3.0';
+	  mustache.tags = [ '{{', '}}' ];
+
+	  // All high-level mustache.* functions use this writer.
+	  var defaultWriter = new Writer();
+
+	  /**
+	   * Clears all cached templates in the default writer.
+	   */
+	  mustache.clearCache = function clearCache () {
+	    return defaultWriter.clearCache();
+	  };
+
+	  /**
+	   * Parses and caches the given template in the default writer and returns the
+	   * array of tokens it contains. Doing this ahead of time avoids the need to
+	   * parse templates on the fly as they are rendered.
+	   */
+	  mustache.parse = function parse (template, tags) {
+	    return defaultWriter.parse(template, tags);
+	  };
+
+	  /**
+	   * Renders the `template` with the given `view` and `partials` using the
+	   * default writer.
+	   */
+	  mustache.render = function render (template, view, partials) {
+	    if (typeof template !== 'string') {
+	      throw new TypeError('Invalid template! Template should be a "string" ' +
+	                          'but "' + typeStr(template) + '" was given as the first ' +
+	                          'argument for mustache#render(template, view, partials)');
+	    }
+
+	    return defaultWriter.render(template, view, partials);
+	  };
+
+	  // This is here for backwards compatibility with 0.4.x.,
+	  /*eslint-disable */ // eslint wants camel cased function name
+	  mustache.to_html = function to_html (template, view, partials, send) {
+	    /*eslint-enable*/
+
+	    var result = mustache.render(template, view, partials);
+
+	    if (isFunction(send)) {
+	      send(result);
+	    } else {
+	      return result;
+	    }
+	  };
+
+	  // Export the escaping function so that the user may override it.
+	  // See https://github.com/janl/mustache.js/issues/244
+	  mustache.escape = escapeHtml;
+
+	  // Export these mainly for testing, but also for advanced usage.
+	  mustache.Scanner = Scanner;
+	  mustache.Context = Context;
+	  mustache.Writer = Writer;
+
+	  return mustache;
+	}));
+
+
+/***/ },
+/* 160 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(PubSub) {'use strict';
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+	var lib = function () {
+	  var prevWidth = null;
+	  /**
+	   * onresize courtesy of this post: https://www.lullabot.com/articles/importing-css-breakpoints-into-javascript
+	   *
+	   * @returns {undefined}
+	  */
+	  function onResize() {
+	    var currentWidth = window.innerWidth;
+	    if (prevWidth == undefined) {
+	      prevWidth = currentWidth;
+	    }
+	    if (prevWidth != window.innerWidth) {
+	      PubSub.publish('window resized', currentWidth);
+	    }
+	  }
+
+	  return {
+	    onResize: onResize
+	  };
+	}();
+
+	exports.lib = lib;
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2)))
+
+/***/ },
+/* 161 */
+/***/ function(module, exports) {
+
+	/* WEBPACK VAR INJECTION */(function(global) {/**
+	 * lodash (Custom Build) <https://lodash.com/>
+	 * Build: `lodash modularize exports="npm" -o ./`
+	 * Copyright jQuery Foundation and other contributors <https://jquery.org/>
+	 * Released under MIT license <https://lodash.com/license>
+	 * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+	 * Copyright Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+	 */
+
+	/** Used as the `TypeError` message for "Functions" methods. */
+	var FUNC_ERROR_TEXT = 'Expected a function';
+
+	/** Used as references for various `Number` constants. */
+	var NAN = 0 / 0;
+
+	/** `Object#toString` result references. */
+	var symbolTag = '[object Symbol]';
+
+	/** Used to match leading and trailing whitespace. */
+	var reTrim = /^\s+|\s+$/g;
+
+	/** Used to detect bad signed hexadecimal string values. */
+	var reIsBadHex = /^[-+]0x[0-9a-f]+$/i;
+
+	/** Used to detect binary string values. */
+	var reIsBinary = /^0b[01]+$/i;
+
+	/** Used to detect octal string values. */
+	var reIsOctal = /^0o[0-7]+$/i;
+
+	/** Built-in method references without a dependency on `root`. */
+	var freeParseInt = parseInt;
+
+	/** Detect free variable `global` from Node.js. */
+	var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;
+
+	/** Detect free variable `self`. */
+	var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
+
+	/** Used as a reference to the global object. */
+	var root = freeGlobal || freeSelf || Function('return this')();
+
+	/** Used for built-in method references. */
+	var objectProto = Object.prototype;
+
+	/**
+	 * Used to resolve the
+	 * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
+	 * of values.
+	 */
+	var objectToString = objectProto.toString;
+
+	/* Built-in method references for those with the same name as other `lodash` methods. */
+	var nativeMax = Math.max,
+	    nativeMin = Math.min;
+
+	/**
+	 * Gets the timestamp of the number of milliseconds that have elapsed since
+	 * the Unix epoch (1 January 1970 00:00:00 UTC).
+	 *
+	 * @static
+	 * @memberOf _
+	 * @since 2.4.0
+	 * @category Date
+	 * @returns {number} Returns the timestamp.
+	 * @example
+	 *
+	 * _.defer(function(stamp) {
+	 *   console.log(_.now() - stamp);
+	 * }, _.now());
+	 * // => Logs the number of milliseconds it took for the deferred invocation.
+	 */
+	var now = function() {
+	  return root.Date.now();
+	};
+
+	/**
+	 * Creates a debounced function that delays invoking `func` until after `wait`
+	 * milliseconds have elapsed since the last time the debounced function was
+	 * invoked. The debounced function comes with a `cancel` method to cancel
+	 * delayed `func` invocations and a `flush` method to immediately invoke them.
+	 * Provide `options` to indicate whether `func` should be invoked on the
+	 * leading and/or trailing edge of the `wait` timeout. The `func` is invoked
+	 * with the last arguments provided to the debounced function. Subsequent
+	 * calls to the debounced function return the result of the last `func`
+	 * invocation.
+	 *
+	 * **Note:** If `leading` and `trailing` options are `true`, `func` is
+	 * invoked on the trailing edge of the timeout only if the debounced function
+	 * is invoked more than once during the `wait` timeout.
+	 *
+	 * If `wait` is `0` and `leading` is `false`, `func` invocation is deferred
+	 * until to the next tick, similar to `setTimeout` with a timeout of `0`.
+	 *
+	 * See [David Corbacho's article](https://css-tricks.com/debouncing-throttling-explained-examples/)
+	 * for details over the differences between `_.debounce` and `_.throttle`.
+	 *
+	 * @static
+	 * @memberOf _
+	 * @since 0.1.0
+	 * @category Function
+	 * @param {Function} func The function to debounce.
+	 * @param {number} [wait=0] The number of milliseconds to delay.
+	 * @param {Object} [options={}] The options object.
+	 * @param {boolean} [options.leading=false]
+	 *  Specify invoking on the leading edge of the timeout.
+	 * @param {number} [options.maxWait]
+	 *  The maximum time `func` is allowed to be delayed before it's invoked.
+	 * @param {boolean} [options.trailing=true]
+	 *  Specify invoking on the trailing edge of the timeout.
+	 * @returns {Function} Returns the new debounced function.
+	 * @example
+	 *
+	 * // Avoid costly calculations while the window size is in flux.
+	 * jQuery(window).on('resize', _.debounce(calculateLayout, 150));
+	 *
+	 * // Invoke `sendMail` when clicked, debouncing subsequent calls.
+	 * jQuery(element).on('click', _.debounce(sendMail, 300, {
+	 *   'leading': true,
+	 *   'trailing': false
+	 * }));
+	 *
+	 * // Ensure `batchLog` is invoked once after 1 second of debounced calls.
+	 * var debounced = _.debounce(batchLog, 250, { 'maxWait': 1000 });
+	 * var source = new EventSource('/stream');
+	 * jQuery(source).on('message', debounced);
+	 *
+	 * // Cancel the trailing debounced invocation.
+	 * jQuery(window).on('popstate', debounced.cancel);
+	 */
+	function debounce(func, wait, options) {
+	  var lastArgs,
+	      lastThis,
+	      maxWait,
+	      result,
+	      timerId,
+	      lastCallTime,
+	      lastInvokeTime = 0,
+	      leading = false,
+	      maxing = false,
+	      trailing = true;
+
+	  if (typeof func != 'function') {
+	    throw new TypeError(FUNC_ERROR_TEXT);
+	  }
+	  wait = toNumber(wait) || 0;
+	  if (isObject(options)) {
+	    leading = !!options.leading;
+	    maxing = 'maxWait' in options;
+	    maxWait = maxing ? nativeMax(toNumber(options.maxWait) || 0, wait) : maxWait;
+	    trailing = 'trailing' in options ? !!options.trailing : trailing;
+	  }
+
+	  function invokeFunc(time) {
+	    var args = lastArgs,
+	        thisArg = lastThis;
+
+	    lastArgs = lastThis = undefined;
+	    lastInvokeTime = time;
+	    result = func.apply(thisArg, args);
+	    return result;
+	  }
+
+	  function leadingEdge(time) {
+	    // Reset any `maxWait` timer.
+	    lastInvokeTime = time;
+	    // Start the timer for the trailing edge.
+	    timerId = setTimeout(timerExpired, wait);
+	    // Invoke the leading edge.
+	    return leading ? invokeFunc(time) : result;
+	  }
+
+	  function remainingWait(time) {
+	    var timeSinceLastCall = time - lastCallTime,
+	        timeSinceLastInvoke = time - lastInvokeTime,
+	        result = wait - timeSinceLastCall;
+
+	    return maxing ? nativeMin(result, maxWait - timeSinceLastInvoke) : result;
+	  }
+
+	  function shouldInvoke(time) {
+	    var timeSinceLastCall = time - lastCallTime,
+	        timeSinceLastInvoke = time - lastInvokeTime;
+
+	    // Either this is the first call, activity has stopped and we're at the
+	    // trailing edge, the system time has gone backwards and we're treating
+	    // it as the trailing edge, or we've hit the `maxWait` limit.
+	    return (lastCallTime === undefined || (timeSinceLastCall >= wait) ||
+	      (timeSinceLastCall < 0) || (maxing && timeSinceLastInvoke >= maxWait));
+	  }
+
+	  function timerExpired() {
+	    var time = now();
+	    if (shouldInvoke(time)) {
+	      return trailingEdge(time);
+	    }
+	    // Restart the timer.
+	    timerId = setTimeout(timerExpired, remainingWait(time));
+	  }
+
+	  function trailingEdge(time) {
+	    timerId = undefined;
+
+	    // Only invoke if we have `lastArgs` which means `func` has been
+	    // debounced at least once.
+	    if (trailing && lastArgs) {
+	      return invokeFunc(time);
+	    }
+	    lastArgs = lastThis = undefined;
+	    return result;
+	  }
+
+	  function cancel() {
+	    if (timerId !== undefined) {
+	      clearTimeout(timerId);
+	    }
+	    lastInvokeTime = 0;
+	    lastArgs = lastCallTime = lastThis = timerId = undefined;
+	  }
+
+	  function flush() {
+	    return timerId === undefined ? result : trailingEdge(now());
+	  }
+
+	  function debounced() {
+	    var time = now(),
+	        isInvoking = shouldInvoke(time);
+
+	    lastArgs = arguments;
+	    lastThis = this;
+	    lastCallTime = time;
+
+	    if (isInvoking) {
+	      if (timerId === undefined) {
+	        return leadingEdge(lastCallTime);
+	      }
+	      if (maxing) {
+	        // Handle invocations in a tight loop.
+	        timerId = setTimeout(timerExpired, wait);
+	        return invokeFunc(lastCallTime);
+	      }
+	    }
+	    if (timerId === undefined) {
+	      timerId = setTimeout(timerExpired, wait);
+	    }
+	    return result;
+	  }
+	  debounced.cancel = cancel;
+	  debounced.flush = flush;
+	  return debounced;
+	}
+
+	/**
+	 * Creates a throttled function that only invokes `func` at most once per
+	 * every `wait` milliseconds. The throttled function comes with a `cancel`
+	 * method to cancel delayed `func` invocations and a `flush` method to
+	 * immediately invoke them. Provide `options` to indicate whether `func`
+	 * should be invoked on the leading and/or trailing edge of the `wait`
+	 * timeout. The `func` is invoked with the last arguments provided to the
+	 * throttled function. Subsequent calls to the throttled function return the
+	 * result of the last `func` invocation.
+	 *
+	 * **Note:** If `leading` and `trailing` options are `true`, `func` is
+	 * invoked on the trailing edge of the timeout only if the throttled function
+	 * is invoked more than once during the `wait` timeout.
+	 *
+	 * If `wait` is `0` and `leading` is `false`, `func` invocation is deferred
+	 * until to the next tick, similar to `setTimeout` with a timeout of `0`.
+	 *
+	 * See [David Corbacho's article](https://css-tricks.com/debouncing-throttling-explained-examples/)
+	 * for details over the differences between `_.throttle` and `_.debounce`.
+	 *
+	 * @static
+	 * @memberOf _
+	 * @since 0.1.0
+	 * @category Function
+	 * @param {Function} func The function to throttle.
+	 * @param {number} [wait=0] The number of milliseconds to throttle invocations to.
+	 * @param {Object} [options={}] The options object.
+	 * @param {boolean} [options.leading=true]
+	 *  Specify invoking on the leading edge of the timeout.
+	 * @param {boolean} [options.trailing=true]
+	 *  Specify invoking on the trailing edge of the timeout.
+	 * @returns {Function} Returns the new throttled function.
+	 * @example
+	 *
+	 * // Avoid excessively updating the position while scrolling.
+	 * jQuery(window).on('scroll', _.throttle(updatePosition, 100));
+	 *
+	 * // Invoke `renewToken` when the click event is fired, but not more than once every 5 minutes.
+	 * var throttled = _.throttle(renewToken, 300000, { 'trailing': false });
+	 * jQuery(element).on('click', throttled);
+	 *
+	 * // Cancel the trailing throttled invocation.
+	 * jQuery(window).on('popstate', throttled.cancel);
+	 */
+	function throttle(func, wait, options) {
+	  var leading = true,
+	      trailing = true;
+
+	  if (typeof func != 'function') {
+	    throw new TypeError(FUNC_ERROR_TEXT);
+	  }
+	  if (isObject(options)) {
+	    leading = 'leading' in options ? !!options.leading : leading;
+	    trailing = 'trailing' in options ? !!options.trailing : trailing;
+	  }
+	  return debounce(func, wait, {
+	    'leading': leading,
+	    'maxWait': wait,
+	    'trailing': trailing
+	  });
+	}
+
+	/**
+	 * Checks if `value` is the
+	 * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
+	 * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+	 *
+	 * @static
+	 * @memberOf _
+	 * @since 0.1.0
+	 * @category Lang
+	 * @param {*} value The value to check.
+	 * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+	 * @example
+	 *
+	 * _.isObject({});
+	 * // => true
+	 *
+	 * _.isObject([1, 2, 3]);
+	 * // => true
+	 *
+	 * _.isObject(_.noop);
+	 * // => true
+	 *
+	 * _.isObject(null);
+	 * // => false
+	 */
+	function isObject(value) {
+	  var type = typeof value;
+	  return !!value && (type == 'object' || type == 'function');
+	}
+
+	/**
+	 * Checks if `value` is object-like. A value is object-like if it's not `null`
+	 * and has a `typeof` result of "object".
+	 *
+	 * @static
+	 * @memberOf _
+	 * @since 4.0.0
+	 * @category Lang
+	 * @param {*} value The value to check.
+	 * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
+	 * @example
+	 *
+	 * _.isObjectLike({});
+	 * // => true
+	 *
+	 * _.isObjectLike([1, 2, 3]);
+	 * // => true
+	 *
+	 * _.isObjectLike(_.noop);
+	 * // => false
+	 *
+	 * _.isObjectLike(null);
+	 * // => false
+	 */
+	function isObjectLike(value) {
+	  return !!value && typeof value == 'object';
+	}
+
+	/**
+	 * Checks if `value` is classified as a `Symbol` primitive or object.
+	 *
+	 * @static
+	 * @memberOf _
+	 * @since 4.0.0
+	 * @category Lang
+	 * @param {*} value The value to check.
+	 * @returns {boolean} Returns `true` if `value` is a symbol, else `false`.
+	 * @example
+	 *
+	 * _.isSymbol(Symbol.iterator);
+	 * // => true
+	 *
+	 * _.isSymbol('abc');
+	 * // => false
+	 */
+	function isSymbol(value) {
+	  return typeof value == 'symbol' ||
+	    (isObjectLike(value) && objectToString.call(value) == symbolTag);
+	}
+
+	/**
+	 * Converts `value` to a number.
+	 *
+	 * @static
+	 * @memberOf _
+	 * @since 4.0.0
+	 * @category Lang
+	 * @param {*} value The value to process.
+	 * @returns {number} Returns the number.
+	 * @example
+	 *
+	 * _.toNumber(3.2);
+	 * // => 3.2
+	 *
+	 * _.toNumber(Number.MIN_VALUE);
+	 * // => 5e-324
+	 *
+	 * _.toNumber(Infinity);
+	 * // => Infinity
+	 *
+	 * _.toNumber('3.2');
+	 * // => 3.2
+	 */
+	function toNumber(value) {
+	  if (typeof value == 'number') {
+	    return value;
+	  }
+	  if (isSymbol(value)) {
+	    return NAN;
+	  }
+	  if (isObject(value)) {
+	    var other = typeof value.valueOf == 'function' ? value.valueOf() : value;
+	    value = isObject(other) ? (other + '') : other;
+	  }
+	  if (typeof value != 'string') {
+	    return value === 0 ? value : +value;
+	  }
+	  value = value.replace(reTrim, '');
+	  var isBinary = reIsBinary.test(value);
+	  return (isBinary || reIsOctal.test(value))
+	    ? freeParseInt(value.slice(2), isBinary ? 2 : 8)
+	    : (reIsBadHex.test(value) ? NAN : +value);
+	}
+
+	module.exports = throttle;
+
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ }
 /******/ ]);
