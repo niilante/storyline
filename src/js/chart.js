@@ -1,3 +1,9 @@
+var d3 = {}
+d3.axis = require('d3-axis');
+d3.scale = require('d3-scale');
+d3.selection = require('d3-selection');
+d3.time = require('d3-time-format');
+
 var Chart = function(dataObj, width, height, margin) {
     var AXIS_HEIGHT = 25;
     this.data = dataObj.data;
@@ -7,16 +13,69 @@ var Chart = function(dataObj, width, height, margin) {
     this.margin = margin || { 'top': 10, 'right': 50, 'bottom': 30, 'left': 20 };
     this.width = width - this.margin.right - this.margin.left;
     this.height = height - this.margin.top - this.margin.bottom - AXIS_HEIGHT;
-    this.init();
+    this.createChart();
 };
 
 Chart.prototype = {
-  init: function() {
+  createChart: function() {
     this.setRange();
     this.setScale();
     this.setTranslation();
     this.createCanvas();
     this.drawLine();
+    this.drawMarkers();
+    this.drawAxes(d3);
+  },
+  drawAxes: function(d3) {
+    var self = this;
+
+    var x = d3.scale.scaleTime()
+      .domain([this.bounds.minX.toDate(), this.bounds.maxX.toDate()])
+      .range([0, this.width]);
+    var xAxis = d3.axis.axisBottom(x)
+      .tickSize(this.height)
+      .tickFormat(d3.time.timeFormat(this.axes.timeFormat))
+
+    var y = d3.scale.scaleLinear()
+      .domain([this.bounds.minY, this.bounds.maxY])
+      .range([this.height, 0])
+    var yAxis = d3.axis.axisRight(y)
+      .tickSize(this.width)
+      .tickFormat(function(d){
+        if(d > 1e6) {
+          d = d/1e6
+        }
+        return this.parentNode.nextSibling ? "\xa0" + d : d
+      })
+
+    function customXAxis(g) {
+      g.call(xAxis);
+      g.select(".domain").remove();
+      g.selectAll(".tick line").attr("stroke", "rgb(211, 211, 211)");
+    }
+
+    function customYAxis(g) {
+      g.call(yAxis);
+      g.select(".domain").remove();
+      g.selectAll(".tick line").attr("stroke", "rgb(211, 211, 211)");
+      g.selectAll(".tick text").attr("dy", -4).attr("text-anchor", "end");
+    }
+
+    d3.selection.select(this.elem)
+    .append("g")
+    .attr("transform", "translate(0,0)")
+    .call(customXAxis)
+
+    d3.selection.select(this.elem)
+      .append("g")
+      .call(customYAxis)
+    .append("text")
+      .attr("fill", "rgb(184, 184, 184)")
+      .attr("x", this.width)
+      .attr("y", 6)
+      .attr("dy", "1.75em")
+      .attr("text-anchor", "end")
+      .text(this.axes.yLabel);
   },
   /**
    * sets the range of the chart
@@ -120,7 +179,7 @@ Chart.prototype = {
    * @param translate
    * @returns {HTMLElement} <g>
    */
-  createSingleTick: function(tickDist, translate) {
+  createTick: function(tickDist, translate) {
     var tick = document.createElementNS('http://www.w3.org/2000/svg', 'g');
 
     tick.setAttribute("transform", `translate(${tickDist}, ${translate})`);
@@ -135,7 +194,7 @@ Chart.prototype = {
    * @param {num} y2
    * @returns {HTMLElement} <line>
    */
-  createTickStroke: function(x1, x2, y1, y2) {
+  drawTick: function(x1, x2, y1, y2) {
     var tickStroke = document.createElementNS('http://www.w3.org/2000/svg', 'line'),
         coords = {
           'x1': x1,
@@ -161,7 +220,7 @@ Chart.prototype = {
    * @param {string} label
    * @returns {HTMLElement} <text>
    */
-   createTickLabel: function(x, y, dy, label) {
+   labelTick: function(x, y, dy, label) {
     var tickLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
 
     tickLabel.setAttribute("fill", "#000");
@@ -196,16 +255,16 @@ Chart.prototype = {
       if(axis === 'x') {
         var distBetweenTicks = (this.width/ticks.numTicks) * i;
 
-        tick = this.createSingleTick(distBetweenTicks, this.height);
-        tickStroke = this.createTickStroke(0, 0, null, 6);
-        tickLabel = this.createTickLabel(-16, 9, 0.71, ticks.tickLabels[i])
+        tick = this.createTick(distBetweenTicks, this.height);
+        tickStroke = this.drawTick(0, 0, null, 6);
+        tickLabel = this.labelTick(-16, 9, 0.71, ticks.tickLabels[i])
         path.setAttribute('d', `M0,${this.height}h${this.width}`)
       } else {
         var distBetweenTicks = ((this.height)/(ticks.tickLabels.length-1)) * i,
 
-        tick = this.createSingleTick(0, this.height-distBetweenTicks);
-        tickStroke = this.createTickStroke(null, -6, 0.5, 0.5);
-        tickLabel = this.createTickLabel(-10, 0.5, 0.31, ticks.tickLabels[i])
+        tick = this.createTick(0, this.height-distBetweenTicks);
+        tickStroke = this.drawTick(null, -6, 0.5, 0.5);
+        tickLabel = this.labelTick(-10, 0.5, 0.31, ticks.tickLabels[i])
         tickLabel.setAttribute('text-anchor', 'end')
         path.setAttribute('d', `M0,${0}v${this.height}`)
       }
@@ -226,8 +285,9 @@ Chart.prototype = {
    * @param {num} counter to keep track of order of points
    * @returns {HTMLElement} <circle>
    */
-  createMarkers: function(markersArray) {
-    var self = this
+  drawMarkers: function() {
+    var self = this,
+        markersArray = this.aggregateMarkers();
 
     self.markers = [];
     markersArray.map(function(marker) {
@@ -297,17 +357,15 @@ Chart.prototype = {
   drawLine: function() {
    var lineEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
-   this.createMarkers(this.aggregateMarkers());
-
    lineEl.setAttribute('d', this.aggregatePoints());
    lineEl.setAttribute('stroke', 'grey');
    lineEl.setAttribute('fill', 'none');
    this.elem.appendChild(lineEl);
 
-   var xAxis = this.createAxis(this.makeAxisValues('x'), 'x');
-   var yAxis = this.createAxis(this.makeAxisValues('y'), 'y');
-   this.elem.appendChild(xAxis);
-   this.elem.appendChild(yAxis);
+   //var xAxis = this.createAxis(this.makeAxisValues('x'), 'x');
+   ///var yAxis = this.createAxis(this.makeAxisValues('y'), 'y');
+   //this.elem.appendChild(xAxis);
+   //this.elem.appendChild(yAxis);
   },
   /**
    * create an empty svg object "canvas" where line graph will be drawn

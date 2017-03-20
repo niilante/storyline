@@ -1,9 +1,9 @@
 var parse = require('csv-parse');
 
-var DataFactoryFunc = function() {
+var DataFactory = function() {
 }
 
-DataFactoryFunc.prototype = {
+DataFactory.prototype = {
   /**
    * runs through data and grabs significant values for drawing line
    *
@@ -11,7 +11,7 @@ DataFactoryFunc.prototype = {
    * @param {object} config -  data object from config file
    * @returns {object} dataObj - data needed for creating a new chart
    */
-  grabData: function(data, config) {
+  createDataObj: function(data, config) {
     var moment = require('moment');
     var output = [],
         bounds = {
@@ -21,10 +21,8 @@ DataFactoryFunc.prototype = {
           maxY: null
         },
         axes = {
-          xTick: null,
-          yTick: null,
-          xAxis: null,
-          yAxis: null
+          yLabel: null,
+          timeFormat: null
         },
         markers = [];
 
@@ -36,10 +34,8 @@ DataFactoryFunc.prototype = {
       bounds.minX = this.getMin(x, bounds.minX)
       bounds.maxX = this.getMax(x, bounds.maxX)
       output.push([x, y]);
-      axes.xTick = config.xTickInterval;
-      axes.yTick = config.yTickInterval;
-      axes.xLabel = config.xLabel;
-      axes.yLabel = config.yLabel;
+      axes.timeFormat = config.timeDisplayFormat;
+      axes.yLabel = config.yLabel ? config.yLabel : config.yAxis;
     }
     markers = this.getSlideMarkers(config.slides);
 
@@ -91,7 +87,7 @@ DataFactoryFunc.prototype = {
    */
   getSlideMarkers: function(slides) {
     var markers = [];
-    slides.map(function(slide) {
+    slides.map(function(slide, index) {
       markers.push(slide.rowNum)
     })
     return markers;
@@ -132,7 +128,7 @@ DataFactoryFunc.prototype = {
     return new Promise(function(resolve, reject) {
       self.get(config.filename).then(function(response) {
         parse(response, {'columns': true}, function(err, data) {
-          resolve(self.grabData(data, config))
+          resolve(self.createDataObj(data, config))
         })
       })
     })
@@ -140,5 +136,5 @@ DataFactoryFunc.prototype = {
 }
 
 module.exports = {
-  DataFactoryFunc
+  DataFactory
 }

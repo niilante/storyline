@@ -1,51 +1,83 @@
 import { Chart } from './chart';
-import { DataFactoryFunc } from './data';
+import { DataFactory } from './data';
 import { Slider } from './slider';
 
-var Storyline = function(targetId, config) {
-  var self = this;
-  this.container = document.getElementById(targetId);
-  this.height = this.container.getAttribute('height');
-  this.container.style.height = this.height + "px";
-  this.width = this.container.getAttribute('width');
-  this.container.style.width = this.width + "px";
-  this.slider = new Slider(config.slides, config.startIndex);
-  var slider = this.slider;
-
-  var data = new DataFactoryFunc;
-
-  (data.fetchData(config)).then(function(dataObj) {
-    storyline.chart = new Chart(dataObj, storyline.width, storyline.height, storyline.margin);
-    var chart = storyline.chart;
-
-    self.appendChart(chart);
-    self.appendSlider(slider);
-    slider.moveSlide();
-    slider.attachClickHandler(chart.markers);
-  });
+var Storyline = function(targetId, dataConfig) {
+  this.elem = document.getElementById(targetId);
+  this.dataConfig = dataConfig;
+  this.init();
 }
+
 Storyline.prototype = {
+  init: function() {
+    var self = this;
+    this.setDimensions();
+    this.slider = this.initSlider();
+    this.grabData(this.dataConfig).then(function(dataObj) {
+      self.data = dataObj;
+      self.chart = self.initChart(dataObj);
+      self.positionChart(self.chart)
+      self.positionSlider(self.slider)
+    });
+    PubSub.subscribe('window resized', function(topic, data) {
+      self.resetWidth(data);
+    })
+  },
+  resetWidth: function(newWidth) {
+    this.width = newWidth;
+    var oldSlider = this.slider.elem
+    var oldChart = this.chart.canvas
+    oldSlider.remove();
+    oldChart.remove();
+    this.slider = this.initSlider();
+    this.chart = this.initChart(this.data)
+    this.positionChart(this.chart)
+    this.positionSlider(this.slider)
+  },
+  grabData: function() {
+    var data = new DataFactory;
+    return data.fetchData(this.dataConfig);
+  },
+  initSlider: function() {
+    var sliderHeight = (0.4*this.height)
+    return new Slider(this.dataConfig.slides, this.dataConfig.startIndex, sliderHeight);
+  },
+  initChart: function(dataObj) {
+    //chart height//
+    var chartHeight = (0.6*this.height);
+    return new Chart(dataObj, this.width, chartHeight, this.margin)
+  },
+  /**
+   * checks browser size and if mobile, overrides input dimensions
+   *
+   * @returns {undefined}
+   */
+  setDimensions: function(width) {
+    this.height = this.elem.getAttribute('height');
+    //this.elem.style.height = this.height + "px";
+    this.width = width ? width : window.innerWidth;
+    //this.elem.style.width = this.width + "px";
+  },
   attr: function(dimension, value) {
     if(dimension == "height") {
       this.height = value;
-      this.container.style.height = value + "px";
+      this.elem.style.height = value + "px";
     } else if(dimension == "width") {
       this.width = value;
-      this.container.style.width = value + "px";
+      this.elem.style.width = value + "px";
     } else if(dimension == "margin") {
       this.margin = value;
     }
   },
-  buildSlides: function(config, targetId) {
-    config
-  },
-  appendChart: function(chart) {
-    this.container.appendChild(chart.canvas);
+  positionChart: function(chart) {
+    this.elem.appendChild(chart.canvas);
     //chart.setWidth(this.width)
   },
-  appendSlider: function(slider) {
-    this.container.appendChild(slider.elem);
+  positionSlider: function(slider) {
+    this.elem.appendChild(slider.elem);
     slider.setWidth(this.width)
+    slider.setTrayPosition();
+    slider.attachClickHandler(this.chart.markers);
     slider.elem.style.opacity = 1;
   }
 }
