@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Storyline JS</title>
-  <script src="./js/main.js"></script>
+  <script src="./js/storyline.js"></script>
   <link rel="stylesheet" href="https://cloud.webtype.com/css/d4767ecb-457a-4677-8761-72f890add836.css"/>
-  <link rel="stylesheet" href="./css/main.css">
+  <link rel="stylesheet" href="./css/storyline.css">
   <!-- Meta -->
   <meta name="keywords" content="Keywords, separated, by, commas">
   <meta name="description" content="DESCRIPTION OF PAGE CONTENT">
@@ -40,38 +40,9 @@
 </head>
 <body>
   <div id="storyline" height="568" width="600"></div>
-  <script id="slider-cards-template" type="text/x-tmpl-mustache">
-   <div class="slider-cards">
-    {{#slides}}
-    <div class="slider-card {{class}}">
-      <div class="slider-content">
-        <h3>{{ title }}</h3>
-        <p>{{ text }}<p>
-      </div>
-    </div>
-    {{/slides}}
-    </div>
-  </script>
-  <script id="nav-template" type="text/x-tmpl-mustache">
-   <div class="nav">
-    <ol>
-      {{#slides}}
-        <li class="nav nav-{{index}}">
-          <a href="#"></a
-        </li>
-      {{/slides}}
-    </ol>
-    </div>
-  </script>
   <script type="text/javascript">
-    var req = new XMLHttpRequest;
-    req.addEventListener("load", function() {
-      var config = JSON.parse(this.responseText);
-      window.storyline = new Storyline('storyline', config);
-      storyline.attr("margin", { top: 10, right: 30, bottom: 20, left: 30 })
-    });
-    req.open("GET", "/assets/data.json");
-    req.send();
+    window.storyline = new Storyline('storyline', "/assets/data.json");
+    storyline.attr("margin", { top: 10, right: 30, bottom: 20, left: 30 })
   </script>
 </body>
 </html>

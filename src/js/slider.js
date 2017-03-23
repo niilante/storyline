@@ -1,8 +1,8 @@
 var Hammer = require('hammerjs');
 
-var Slider = function(slides, startIndex, height) {
+var Slider = function(cards, startIndex, height) {
   this.activeCard = startIndex;
-  this.slides = slides;
+  this.cards = cards;
   this.MARGIN = 10;
   this.height = height;
   this.createSlider();
@@ -13,13 +13,13 @@ Slider.prototype = {
   createSlider: function() {
     //create index key in slides for use in class naming by index in nav//
     //mustache should have something about iterating over index//
-    for(var i in this.slides) {
-      this.slides[i].index = i
+    for(var i in this.cards) {
+      this.cards[i].index = i
     }
-    this.cards = this.renderTemplate('slider-cards-template', this)
-    this.nav = this.renderTemplate('nav-template', this)
+    this.cardsElem = this.renderTemplate('slider-cards-template', this)
+    this.navElem = this.renderTemplate('nav-template', this)
     this.elem = this.createSliderView();
-    this.attachClickHandler(this.nav.children[0].children);
+    this.attachClickHandler(this.navElem.children[0].children);
   },
   /**
    * creates the slider view and appends slides to it
@@ -31,16 +31,18 @@ Slider.prototype = {
         sliderView.setAttribute('class', 'slider-view');
         sliderView.style.height = this.height + "px";
 
-    sliderView.appendChild(this.cards);
-    sliderView.appendChild(this.nav);
+    sliderView.appendChild(this.cardsElem);
+    sliderView.appendChild(this.navElem);
 
     return sliderView;
   },
+  getTemplate: function(templateId) {
+    return MUSTACHE_TEMPLATES[templateId];
+  },
   renderTemplate: function(templateId, context) {
     var mustache = require('mustache'),
-
-    templateContent = document.getElementById(templateId).innerHTML,
-    rendered = mustache.render(templateContent, context);
+        templateContent = this.getTemplate(templateId),
+        rendered = mustache.render(templateContent, context);
 
     var parser = new DOMParser(),
         doc = parser.parseFromString(rendered, "text/html");
@@ -66,21 +68,23 @@ Slider.prototype = {
   },
   setActiveCard: function(currentActiveCard, pastActiveCard) {
     this.activeCard = currentActiveCard;
-    if(this.cards.children[pastActiveCard].classList.contains('active')) {
-      this.cards.children[pastActiveCard].classList.remove('active');
-      this.nav.children[0].children[pastActiveCard].classList.remove('active');
+    if(this.cardsElem.children[pastActiveCard].classList.contains('active')) {
+      this.cardsElem.children[pastActiveCard].classList.remove('active');
+      this.navElem.children[0].children[pastActiveCard].classList.remove('active');
       storyline.chart.markers[pastActiveCard].classList.remove('active')
     }
-    this.cards.children[currentActiveCard].classList.add('active');
-    this.nav.children[0].children[currentActiveCard].classList.add('active');
+    this.cardsElem.children[currentActiveCard].classList.add('active');
+    this.navElem.children[0].children[currentActiveCard].classList.add('active');
     storyline.chart.markers[currentActiveCard].classList.add('active')
   },
   setTrayPosition: function(index, pastIndex) {
     index = index!=undefined ? index : this.activeCard;
     pastIndex = pastIndex | 0;
 
-    var card = this.cards.children[index];
-    this.cards.style.marginLeft = -1 * (card.offsetLeft - this.offset) + "px";
+    var card = this.cardsElem.children[index];
+    var move = ((card.offsetLeft/this.sliderWidth) * 100) - this.offsetPercent
+    this.currentOffset = - move
+    this.cardsElem.style.transform = 'translateX(' +  this.currentOffset  + "%)";
 
     this.setActiveCard(index, pastIndex)
   },
@@ -96,52 +100,73 @@ Slider.prototype = {
     } else {
       w = 500;
     }
-    this.viewportSize = this.cards.parentElement.clientWidth;
-    this.offset = this.viewportSize/2 - w/2 - this.MARGIN;
-    this.cardwidth = w;
-    var numSlides = this.slides.length;
-    this.cards.style.width = w * numSlides + "px";
-    this.cards.style.marginLeft = this.offset + "px"
-    for(var i = 0; i < this.cards.children.length; i++) {
-      this.cards.children[i].style.width = w + "px";
-      this.cards.children[i].style.border = this.MARGIN + "px solid white";
+    this.viewportSize = this.cardsElem.parentElement.clientWidth;
+    var offset = this.viewportSize/2 - w/2;
+    this.cardWidth = w
+    this.sliderWidth = w * this.cards.length
+    this.offsetPercent = offset/(w*this.cards.length) * 100
+    this.cardsElem.style.width = this.sliderWidth + "px"
+    this.cardsElem.style.transform = 'translateX(' + this.offsetPercent + '%)';
+    for(var i = 0; i < this.cards.length; i++) {
+      this.cardsElem.children[i].style.width = w + "px";
+      this.cardsElem.children[i].style.border = this.MARGIN + "px solid white";
     }
   },
+  /**
+   * Calculates position of slider offset based on dragging the card
+   *
+   * @returns {undefined}
+   */
   slideCard: function() {
     var self = this;
     var offset;
-    var getOffset = function() {
-      offset = self.cards.style.marginLeft;
-      offset = parseInt(offset.split("px")[0], 10)
-      self.offsets = [
-        self.offset,
-        -(self.cardwidth - self.offset),
-        -(self.cardwidth*2 - self.offset),
-        -(self.cardwidth*3 - self.offset),
-        -(self.cardwidth*4 - self.offset)
-      ]
-      console.log(self.offsets)
+    var transformPercentage = 0;
+    var percentage = 0;
+    var goToSlide = function(number) {
+      if(number < 0) {
+        self.activeCard = 0;
+      } else if(number > self.cards.length - 1) {
+        self.activeCard = number - 1
+      } else {
+        self.setActiveCard(number, self.activeCard)
+        self.activeCard = number;
+      }
+
+      self.cardsElem.classList.add('is-animating')
+      var percentage = -(100 / self.cards.length) * self.activeCard;
+      percentage = percentage + self.offsetPercent
+      self.cardsElem.style.transform = 'translateX(' + percentage + '%)';
+      clearTimeout(timer);
+      var timer = setTimeout(function() {
+        self.cardsElem.classList.remove( 'is-animating' );
+      }, 400 );
     }
-    var onPan = function(ev) {
-      var delta = offset + ev.deltaX;
-      var left = self.cardwidth*4 - self.offset
-      if (delta >= -left && delta <= self.offset) {
-        if(delta <= self.offsets[4]) {
-          self.setActiveCard(4, self.activeCard)
-          self.cards.style.marginLeft = self.offsets[4] + "px"
-        } else if(delta <= self.offsets[3]) {
-          self.setActiveCard(3, self.activeCard)
-          self.cards.style.marginLeft = self.offsets[3] + "px"
-        } else if(delta <= self.offsets[2]){
-          self.setActiveCard(2, self.activeCard)
-          self.cards.style.marginLeft = self.offsets[2] + "px"
-        } else if(delta <= self.offsets[1]) {
-          self.setActiveCard(1, self.activeCard)
-          self.cards.style.marginLeft = self.offsets[1] + "px"
-        } else if(delta <= self.offsets[0]) {
-          self.setActiveCard(0, self.activeCard)
-          self.cards.style.marginLeft = self.offsets[0] + "px"
-        }
+    var handleHammer = function(ev) {
+      ev.preventDefault();
+      switch(ev.type) {
+        case 'panleft':
+        case 'panright':
+          percentage = (ev.deltaX/self.sliderWidth) * 100
+          transformPercentage = percentage + self.currentOffset
+          if(percentage > -100 && percentage < 20) {
+            self.cardsElem.style.transform = 'translateX(' + transformPercentage + '%)';
+          }
+          break;
+        case 'panend':
+          var dragPercentage = (ev.deltaX/self.viewportSize*100)
+          if(dragPercentage < -50) {
+            var newCard = self.activeCard + 1;
+            self.currentOffset =  -(100/self.cards.length * newCard - self.offsetPercent)
+            goToSlide(self.activeCard + 1);
+          } else if(dragPercentage > 50) {
+            var newCard = self.activeCard - 1;
+            self.currentOffset =  -( 100/self.cards.length * newCard - self.offsetPercent)
+            goToSlide(self.activeCard - 1);
+          } else {
+            self.currentOffset =  - (100/self.cards.length * self.activeCard - self.offsetPercent)
+            goToSlide(self.activeCard);
+          }
+          break;
       }
     }
 
@@ -149,15 +174,12 @@ Slider.prototype = {
       var mc = new Hammer.Manager(v, {})
       mc.add(new Hammer.Pan({
         direction: Hammer.DIRECTION_HORIZONTAL,
-        threshold: 10
+        threshold: 50
       }))
-      mc.on('panstart', getOffset)
-      mc.on('panleft', onPan)
-      mc.on('panright', onPan)
-      mc.on('panend')
+      mc.on('panleft panright panend', handleHammer)
     }
 
-    Array.prototype.map.call(this.cards.children, function(content) {
+    Array.prototype.map.call(this.cardsElem.children, function(content) {
        content = content.children[0]
        createHammer(content)
     })
@@ -166,4 +188,28 @@ Slider.prototype = {
 
 module.exports = {
   Slider: Slider
+}
+
+const MUSTACHE_TEMPLATES = {
+    "slider-cards-template":
+      "<div class='slider-cards'>" +
+       "{{#cards}}" +
+       "<div class='slider-card {{class}}'>" +
+         "<div class='slider-content'>" +
+           "<h3>{{ title }}</h3>" +
+           "<p>{{ text }}<p>" +
+         "</div>" +
+       "</div>" +
+       "{{/cards}}" +
+       "</div>",
+    "nav-template":
+      "<div class='nav'>" +
+         "<ol>" +
+           "{{#cards}}" +
+             "<li class='nav nav-{{index}}'>" +
+               "<a href='#'></a>" +
+             "</li>" +
+           "{{/cards}}" +
+         "</ol>" +
+       "</div>"
 }

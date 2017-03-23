@@ -23,6 +23,7 @@
     "webpack": "^1.13.1"
   },
   "devDependencies": {
+    "adm-zip": "^0.4.7",
     "babel-core": "^6.22.1",
     "babel-loader": "^6.2.10",
     "chai-as-promised": "^6.0.0",
@@ -56,14 +57,15 @@
   "scripts": {
     "start": "parallelshell 'webpack --watch' 'npm run watch' 'npm run server'",
     "prestart": "npm run clean && webpack && npm run compile",
-    "dist": "webpack -p && npm run compile && node tasks/minify-css.js",
+    "dist": "webpack -p && npm run compile && npm run sass && node tasks/minify-css.js",
     "clean": "rimraf dist/",
     "watch": "node tasks/watch.js",
     "server": "http-server ./dist -c-1",
     "compile": "npm run copy && npm run sass",
-    "copy": "ncp src/index.html dist/index.html --stopOnErr && ncp src/assets dist/assets --stopOnErr",
+    "copy": "mkdir -p dist && ncp src/index.html dist/index.html --stopOnErr && ncp src/assets dist/assets --stopOnErr",
     "sass": "node-sass -o dist/css -q --output-style compact src/scss/",
     "test": "mocha --compilers js:babel-core/register --require babel-polyfill './test/*-test.js'",
-    "stage": "node tasks/stage.js"
+    "stage": "npm run clean && npm run dist && node tasks/stage.js",
+    "stage_latest": "npm run clean && npm run dist && node tasks/stage.js latest"
   }
 }
